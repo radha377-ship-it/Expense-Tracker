@@ -1,0 +1,2924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Expense & Statement Tracker - Multi-Currency Fixed Deposits & Cashflow</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js library for interactive pie/doughnut analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <!-- PDF.js library for in-browser client-side PDF parsing and password decryption -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-8 flex flex-col items-center">
+  <div class="w-full max-w-2xl bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Expense & Wealth Tracker</h1>
+          <p class="text-indigo-100 text-sm mt-0.5">Multi-currency fixed deposits, accounts, statements & cash flow</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Currency selector (USD / AED) -->
+          <div class="flex bg-indigo-700/80 p-0.5 rounded-lg border border-indigo-400/30 text-xs">
+            <button 
+              type="button" 
+              id="currUsdBtn" 
+              class="px-2 py-1 rounded-md font-bold text-indigo-200 hover:text-white"
+            >
+              $
+            </button>
+            <button 
+              type="button" 
+              id="currAedBtn" 
+              class="px-2 py-1 rounded-md font-bold bg-white text-indigo-900 shadow-xs"
+            >
+              AED
+            </button>
+          </div>
+          <!-- Host Online Button -->
+          <button 
+            type="button" 
+            id="openHostingModalBtn" 
+            class="bg-indigo-500 hover:bg-indigo-400 text-white text-xs px-2.5 py-1.5 rounded-lg border border-indigo-300/40 font-semibold transition flex items-center gap-1"
+            title="Learn how to host this app online for free"
+          >
+            🌐 <span>Host Online</span>
+          </button>
+          <button 
+            type="button" 
+            id="openResetModalBtn" 
+            class="bg-indigo-800/80 hover:bg-rose-600 text-white text-xs px-2.5 py-1.5 rounded-lg border border-indigo-400/30 transition"
+            title="Reset and clear saved data"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="p-5 sm:p-6 space-y-6">
+      <!-- Duplicate Warning Alert Banner (Visible when duplicates exist) -->
+      <div id="duplicateAlertBanner" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2.5">
+          <span class="text-base">⚠️</span>
+          <div>
+            <p class="text-xs font-bold text-amber-900" id="duplicateCountText">2 Duplicate Entries Found</p>
+            <p class="text-[11px] text-amber-700">Identical transactions detected across your accounts or statement imports.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 self-end sm:self-auto">
+          <button 
+            type="button" 
+            id="filterDuplicatesBtn" 
+            class="text-[11px] font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-md transition"
+          >
+            View Duplicates
+          </button>
+          <button 
+            type="button" 
+            id="resolveDuplicatesBtn" 
+            class="text-[11px] font-semibold text-white bg-amber-600 hover:bg-amber-700 px-2.5 py-1 rounded-md transition shadow-2xs"
+          >
+            Remove Duplicates
+          </button>
+        </div>
+      </div>
+
+      <!-- Income & Net Cashflow Dashboard Overview -->
+      <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Total Income Card -->
+        <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase tracking-wider text-emerald-800 font-semibold">Total Income</span>
+            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Inflows</span>
+          </div>
+          <p id="totalIncomeDisplay" class="text-2xl font-bold text-emerald-950 mt-1">AED 0.00</p>
+          <p id="incomeCountDisplay" class="text-xs text-emerald-700 mt-1">0 deposits recorded</p>
+        </div>
+
+        <!-- Total Expenses Card -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Total Expenses</p>
+            <span id="baseCurrLabel" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">Base: AED</span>
+          </div>
+          <p id="totalDisplay" class="text-2xl font-bold text-slate-900 mt-1">AED 0.00</p>
+          <p id="countDisplay" class="text-xs text-slate-500 mt-1">0 items logged</p>
+        </div>
+
+        <!-- Net Cashflow & Savings Card -->
+        <div class="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase tracking-wider text-indigo-800 font-semibold">Net Cash Flow</span>
+            <span id="savingsRateBadge" class="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
+              0% saved
+            </span>
+          </div>
+          <p id="netCashflowDisplay" class="text-2xl font-bold text-indigo-950 mt-1">AED 0.00</p>
+          <p id="netCashflowSubtext" class="text-xs text-indigo-600 mt-1">Income minus expenses</p>
+        </div>
+      </section>
+
+      <!-- Account Balances & Fixed Deposits Summary Cards (Multi-Currency) -->
+      <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Bank Account (Checking - AED) -->
+        <div class="bg-blue-50/60 border border-blue-200/80 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase tracking-wider text-blue-700 font-semibold">Bank (Checking)</span>
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          </div>
+          <p id="bankTotalDisplay" class="text-2xl font-bold text-blue-950 mt-1">AED 0.00</p>
+          <div class="flex items-center justify-between mt-1">
+            <p id="bankCountDisplay" class="text-xs text-blue-600">0 transactions</p>
+            <span id="bankNetIndicator" class="text-[11px] text-blue-700 font-medium">Net: AED 0.00</span>
+          </div>
+        </div>
+
+        <!-- Credit Card (USD) -->
+        <div class="bg-purple-50/60 border border-purple-200/80 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase tracking-wider text-purple-700 font-semibold">Credit Card (USD)</span>
+            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+          </div>
+          <p id="cardTotalDisplay" class="text-2xl font-bold text-purple-950 mt-1">$0.00</p>
+          <div class="flex items-center justify-between mt-1">
+            <p id="cardCountDisplay" class="text-xs text-purple-600">0 transactions</p>
+            <span id="cardConvertedNote" class="text-[10px] text-purple-700/80 font-medium">≈ AED 0.00</span>
+          </div>
+        </div>
+
+        <!-- Fixed Deposits Portfolio Summary Card -->
+        <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase tracking-wider text-amber-800 font-semibold">Fixed Deposits</span>
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          </div>
+          <p id="fdTotalDisplay" class="text-2xl font-bold text-amber-950 mt-1">AED 0.00</p>
+          <div class="flex items-center justify-between mt-1">
+            <p id="fdCountDisplay" class="text-xs text-amber-700">0 active FDs</p>
+            <span id="fdEstInterestNote" class="text-[10px] text-emerald-700 font-semibold">+AED 0.00/yr</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Monthly Budget Tracking Card -->
+      <section class="bg-gradient-to-r from-slate-50 to-indigo-50/40 border border-slate-200 rounded-xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h3 class="text-xs uppercase tracking-wider text-slate-600 font-bold flex items-center gap-1.5">
+              <span>Monthly Budget Tracker</span>
+            </h3>
+            <p id="budgetStatusText" class="text-xs text-slate-600 mt-0.5 font-medium">
+              Spent <span id="budgetSpentVal">AED 0.00</span> of <span id="budgetLimitVal">AED 7,500.00</span>
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span id="budgetBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+              On Track
+            </span>
+            <button 
+              type="button" 
+              id="editBudgetBtn" 
+              class="text-xs text-indigo-600 hover:text-indigo-800 font-medium underline px-1"
+            >
+              Edit Cap
+            </button>
+          </div>
+        </div>
+
+        <!-- Budget Progress Bar -->
+        <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+          <div id="budgetProgressBar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- Inline Budget Editor -->
+        <div id="budgetEditorRow" class="hidden flex items-center gap-2 pt-1 border-t border-slate-200/60">
+          <label for="budgetInput" class="text-xs text-slate-600 font-medium">Monthly Cap:</label>
+          <input 
+            type="number" 
+            id="budgetInput" 
+            step="100" 
+            min="100" 
+            value="7500" 
+            class="px-2.5 py-1 text-xs rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-28 bg-white"
+          >
+          <button 
+            type="button" 
+            id="saveBudgetBtn" 
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1 rounded transition"
+          >
+            Save Cap
+          </button>
+        </div>
+      </section>
+
+      <!-- Interactive Chart & Category Spending Breakdown (Chart.js Integration) -->
+      <section class="bg-slate-50/80 border border-slate-200 rounded-xl p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h3 class="text-xs uppercase tracking-wider text-slate-600 font-bold flex items-center gap-1.5">
+              <span>Interactive Spending Chart</span>
+            </h3>
+            <div class="flex bg-slate-200/80 p-0.5 rounded-md text-[11px]">
+              <button 
+                type="button" 
+                id="chartTypeDoughnutBtn" 
+                class="px-2 py-0.5 rounded font-semibold bg-white text-slate-800 shadow-2xs"
+              >
+                Doughnut
+              </button>
+              <button 
+                type="button" 
+                id="chartTypePieBtn" 
+                class="px-2 py-0.5 rounded font-medium text-slate-600 hover:text-slate-900"
+              >
+                Pie
+              </button>
+            </div>
+          </div>
+          <span id="storageSyncBadge" class="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Auto-saved to browser
+          </span>
+        </div>
+
+        <!-- Chart Container with fixed height per WebApp rules -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div class="relative h-60 sm:h-64 w-full flex items-center justify-center bg-white rounded-xl border border-slate-100 p-2">
+            <div id="chartEmptyMessage" class="text-xs text-slate-400 text-center py-12">
+              <p class="font-medium">No spending data for chart</p>
+              <p class="text-[11px] mt-1">Add expenses or import a statement to view interactive chart.</p>
+            </div>
+            <canvas id="categoryDoughnutChart" class="hidden"></canvas>
+          </div>
+
+          <div id="categoryBarsContainer" class="space-y-2 text-xs">
+            <!-- Populated dynamically via renderCategories() -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Feedback / Status message container -->
+      <div id="statusMessage" class="hidden text-xs font-medium rounded-lg p-3 text-center transition-all"></div>
+
+      <!-- Action Mode Selector (Manual vs Upload Statement vs Fixed Deposits) -->
+      <div class="border-b border-slate-200">
+        <nav class="flex space-x-6 text-sm font-medium">
+          <button 
+            type="button" 
+            id="tabManualBtn" 
+            class="pb-3 border-b-2 border-indigo-600 text-indigo-600 font-semibold flex items-center gap-2"
+          >
+            <span>Manual Entry</span>
+          </button>
+          <button 
+            type="button" 
+            id="tabUploadBtn" 
+            class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2"
+          >
+            <span>Upload Statement (CSV)</span>
+            <span class="bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">New</span>
+          </button>
+          <button 
+            type="button" 
+            id="tabFdBtn" 
+            class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2"
+          >
+            <span>Fixed Deposits</span>
+            <span class="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded-full font-bold">FDs</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- 1. MANUAL ENTRY FORM (Supports Income & Expense) -->
+      <section id="manualSection">
+        <form id="expenseForm" class="space-y-4">
+          <div class="flex items-center gap-3 p-1.5 bg-slate-100 rounded-xl">
+            <label class="flex-1 text-center cursor-pointer">
+              <input type="radio" name="transType" value="expense" checked class="peer sr-only" id="typeExpenseRadio">
+              <span class="block py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-600 peer-checked:bg-white peer-checked:text-rose-600 peer-checked:shadow-xs transition">
+                💸 Expense (Outflow)
+              </span>
+            </label>
+            <label class="flex-1 text-center cursor-pointer">
+              <input type="radio" name="transType" value="income" class="peer sr-only" id="typeIncomeRadio">
+              <span class="block py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-600 peer-checked:bg-white peer-checked:text-emerald-700 peer-checked:shadow-xs transition">
+                💰 Income (Salary / Inflow)
+              </span>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="expenseTitle" id="titleFieldLabel" class="block text-sm font-medium text-slate-700 mb-1">What did you spend on?</label>
+              <input 
+                type="text" 
+                id="expenseTitle" 
+                placeholder="e.g., Monthly Salary, Carrefour, DEWA" 
+                required 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition"
+              >
+            </div>
+
+            <div>
+              <label for="expenseAmount" class="block text-sm font-medium text-slate-700 mb-1">
+                Amount <span id="manualAmountCurrencyLabel" class="text-xs text-indigo-600 font-semibold">(AED)</span>
+              </label>
+              <input 
+                type="number" 
+                id="expenseAmount" 
+                step="0.01" 
+                min="0.01" 
+                placeholder="0.00" 
+                required 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition"
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label for="expenseAccount" id="accountFieldLabel" class="block text-sm font-medium text-slate-700 mb-1">Charge To Account</label>
+              <select 
+                id="expenseAccount" 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white transition"
+              >
+                <option value="bank">Bank Account (Checking - AED)</option>
+                <option value="credit_card">Credit Card (USD)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="expenseCategory" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <select 
+                id="expenseCategory" 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white transition"
+              >
+                <option value="groceries">Groceries & Food</option>
+                <option value="transport">Transport & Fuel</option>
+                <option value="utilities">Bills & Utilities</option>
+                <option value="entertainment">Entertainment</option>
+                <option value="shopping">Shopping & Other</option>
+                <option value="salary">Salary & Payroll</option>
+                <option value="freelance">Freelance & Consulting</option>
+                <option value="investment">Investments & Returns</option>
+                <option value="refund">Refunds & Other Income</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="expenseDate" class="block text-sm font-medium text-slate-700 mb-1">Date</label>
+              <input 
+                type="date" 
+                id="expenseDate" 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition"
+              >
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            id="addBtn" 
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-150 shadow-sm active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            <span>Add Expense</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- 2. UPLOAD STATEMENT SECTION -->
+      <section id="uploadSection" class="hidden space-y-5">
+        <!-- Statement Password Configuration Box -->
+        <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+              <h3 class="text-sm font-semibold text-amber-900">Statement Password Settings</h3>
+            </div>
+            <span id="passwordStatusBadge" class="text-[11px] font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300/60">
+              No password set
+            </span>
+          </div>
+          <p class="text-xs text-amber-800/90 leading-relaxed">
+            Bank e-statements (Emirates NBD, ADCB, Mashreq, Chase) are encrypted with a password. Save your password here to automatically decrypt and parse your PDF statements.
+          </p>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-1">
+              <input 
+                type="password" 
+                id="statementPasswordInput" 
+                placeholder="Enter statement password..." 
+                class="w-full pl-3 pr-10 py-2 rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-xs bg-white"
+              >
+              <button 
+                type="button" 
+                id="togglePasswordVisibilityBtn" 
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1"
+                title="Show / Hide password"
+              >
+                👁
+              </button>
+            </div>
+            <button 
+              type="button" 
+              id="savePasswordBtn" 
+              class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
+            >
+              Update Password
+            </button>
+            <button 
+              type="button" 
+              id="clearPasswordBtn" 
+              class="border border-amber-300 bg-white hover:bg-amber-100/50 text-amber-900 text-xs font-medium px-3 py-2 rounded-lg transition whitespace-nowrap"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- File Upload Form with Dual Flow Handling & Duplicate Protection -->
+        <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div>
+              <h3 class="text-sm font-semibold text-indigo-900">Upload Bank or Credit Card Statement</h3>
+              <p class="text-xs text-indigo-700 mt-0.5">
+                Statements automatically parse <strong>both income deposits and expense debits</strong> simultaneously into your account.
+              </p>
+            </div>
+            <label class="flex items-center gap-2 text-xs font-medium text-indigo-900 cursor-pointer pt-1 sm:pt-0">
+              <input type="checkbox" id="skipDuplicatesCheckbox" checked class="rounded text-indigo-600 focus:ring-indigo-500">
+              <span>Auto-skip duplicate transactions</span>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="uploadTargetAccount" class="block text-sm font-medium text-slate-700 mb-1">Assign Statement To</label>
+              <select 
+                id="uploadTargetAccount" 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+              >
+                <option value="bank">Bank Account (Checking - AED)</option>
+                <option value="credit_card">Credit Card (USD)</option>
+                <option value="fixed_deposit">Fixed Deposit Certificate / Advice (FDs)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="csvFileInput" class="block text-sm font-medium text-slate-700 mb-1">Select File (PDF or CSV)</label>
+              <input 
+                type="file" 
+                id="csvFileInput" 
+                accept=".pdf,.csv,text/csv,text/plain,application/pdf" 
+                class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-300 rounded-lg p-1.5 bg-white"
+              >
+            </div>
+          </div>
+
+          <button 
+            type="button" 
+            id="processCsvBtn" 
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-150 shadow-sm text-sm flex items-center justify-center gap-2"
+          >
+            <span id="processBtnSpinner" class="hidden animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+            <span id="processBtnText">Parse & Import Statement</span>
+          </button>
+        </div>
+
+        <!-- Quick Demo Data Buttons (Instant Testing) -->
+        <div class="pt-2 border-t border-slate-100">
+          <p class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Quick Test Dual Income & Expense Statements:</p>
+          <div class="flex flex-wrap gap-2">
+            <button 
+              type="button" 
+              id="sampleBankBtn" 
+              class="px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-medium transition"
+            >
+              + Load Sample Bank Statement
+            </button>
+            <button 
+              type="button" 
+              id="sampleCardBtn" 
+              class="px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-medium transition"
+            >
+              + Load Sample Credit Card Statement
+            </button>
+            <button 
+              type="button" 
+              id="samplePdfBtn" 
+              class="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-medium transition flex items-center gap-1.5"
+            >
+              🔒 <span>Test Encrypted PDF Flow</span>
+            </button>
+            <button 
+              type="button" 
+              id="sampleDuplicateTestBtn" 
+              class="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-medium transition"
+            >
+              + Test Duplicate Detection
+            </button>
+            <button 
+              type="button" 
+              id="sampleSalaryDepositBtn" 
+              class="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-medium transition"
+            >
+              + Add Sample Salary (AED 18,500)
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. FIXED DEPOSITS (FD) SECTION (Manual Entry + Certificate Upload) -->
+      <section id="fdSection" class="hidden space-y-5">
+        <!-- FD Upload Advice / Certificate Card -->
+        <div class="bg-gradient-to-r from-amber-50/80 to-amber-100/40 border border-amber-300/80 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div>
+              <h3 class="text-sm font-bold text-amber-950 flex items-center gap-1.5">
+                <span>📄 Upload Fixed Deposit Certificate / Advice</span>
+                <span class="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded-full font-bold">New</span>
+              </h3>
+              <p class="text-xs text-amber-800/90 mt-0.5">
+                Upload bank FD advice slips or deposit schedules (<strong>.pdf</strong> or <strong>.csv</strong>). Auto-extracts principal, yield, and maturity dates.
+              </p>
+            </div>
+            <button 
+              type="button" 
+              id="sampleFdUploadDemoBtn" 
+              class="text-xs font-semibold text-amber-900 bg-white hover:bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-300 shadow-2xs transition self-start sm:self-auto"
+            >
+              + Try Sample FD Advice (PDF / CSV)
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div class="sm:col-span-2">
+              <label for="fdFileInput" class="block text-xs font-semibold text-amber-900 mb-1">Select FD Certificate (PDF / CSV)</label>
+              <input 
+                type="file" 
+                id="fdFileInput" 
+                accept=".pdf,.csv,text/csv,text/plain,application/pdf" 
+                class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-200/70 file:text-amber-900 hover:file:bg-amber-300/70 cursor-pointer border border-amber-300 rounded-lg p-1.5 bg-white"
+              >
+            </div>
+            <div>
+              <button 
+                type="button" 
+                id="processFdFileBtn" 
+                class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-lg transition shadow-sm text-xs flex items-center justify-center gap-1.5"
+              >
+                <span id="fdUploadSpinner" class="hidden animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                <span>Parse & Import FD</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual FD Creation Card -->
+        <div class="bg-amber-50/50 border border-amber-200/80 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-amber-950">Add Multi-Currency Fixed Deposit Manually</h3>
+              <p class="text-xs text-amber-800/80 mt-0.5">Track term deposits across AED, USD, EUR, and GBP with auto-calculated yield.</p>
+            </div>
+            <button 
+              type="button" 
+              id="sampleFdBtn" 
+              class="text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg border border-amber-300/80 transition"
+            >
+              + Load Sample FDs
+            </button>
+          </div>
+
+          <form id="fdForm" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="fdTitle" class="block text-xs font-semibold text-slate-700 mb-1">Bank / Deposit Name</label>
+                <input 
+                  type="text" 
+                  id="fdTitle" 
+                  placeholder="e.g. Emirates NBD 1-Year Term Deposit" 
+                  required 
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-white"
+                >
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label for="fdCurrency" class="block text-xs font-semibold text-slate-700 mb-1">Currency</label>
+                  <select 
+                    id="fdCurrency" 
+                    class="w-full px-2.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-white font-medium"
+                  >
+                    <option value="AED">AED (UAE Dirham)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="fdPrincipal" class="block text-xs font-semibold text-slate-700 mb-1">Principal Amount</label>
+                  <input 
+                    type="number" 
+                    id="fdPrincipal" 
+                    step="100" 
+                    min="1000" 
+                    placeholder="100000" 
+                    required 
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-white font-semibold"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label for="fdRate" class="block text-xs font-semibold text-slate-700 mb-1">Interest Rate (% p.a.)</label>
+                <input 
+                  type="number" 
+                  id="fdRate" 
+                  step="0.05" 
+                  min="0.1" 
+                  max="25" 
+                  placeholder="5.15" 
+                  required 
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-white"
+                >
+              </div>
+
+              <div>
+                <label for="fdTenure" class="block text-xs font-semibold text-slate-700 mb-1">Tenure / Duration</label>
+                <select 
+                  id="fdTenure" 
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-white"
+                >
+                  <option value="3">3 Months</option>
+                  <option value="6">6 Months</option>
+                  <option value="12" selected>12 Months (1 Year)</option>
+                  <option value="24">24 Months (2 Years)</option>
+                  <option value="36">36 Months (3 Years)</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="fdStartDate" class="block text-xs font-semibold text-slate-700 mb-1">Deposit Start Date</label>
+                <input 
+                  type="date" 
+                  id="fdStartDate" 
+                  required 
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-white"
+                >
+              </div>
+            </div>
+
+            <!-- Calculation Preview Box -->
+            <div id="fdCalcPreview" class="bg-white/80 border border-amber-200/90 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-amber-950 gap-2">
+              <div>
+                <span class="text-slate-500">Maturity Date: </span>
+                <span id="previewMaturityDate" class="font-bold text-slate-800">--</span>
+              </div>
+              <div>
+                <span class="text-slate-500">Estimated Total Interest: </span>
+                <span id="previewInterestVal" class="font-bold text-emerald-700">--</span>
+              </div>
+              <div>
+                <span class="text-slate-500">Total at Maturity: </span>
+                <span id="previewTotalMaturityVal" class="font-bold text-indigo-900">--</span>
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              id="addFdBtn" 
+              class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-lg transition shadow-sm text-xs flex items-center justify-center gap-1.5"
+            >
+              <span>+ Save Fixed Deposit</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Fixed Deposits List -->
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-slate-800">Active Fixed Deposits</h4>
+            <span id="fdPortfolioSummaryBadge" class="text-xs text-slate-500 font-medium">0 active</span>
+          </div>
+
+          <div id="emptyFdState" class="text-center py-8 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+            <p class="text-sm font-medium">No fixed deposits tracked yet</p>
+            <p class="text-xs text-slate-400 mt-1">Upload an FD certificate above, add manually, or load sample deposits.</p>
+          </div>
+
+          <div id="fdListContainer" class="space-y-3">
+            <!-- Dynamically populated via renderFixedDeposits() -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TRANSACTIONS LIST SECTION -->
+      <section class="space-y-3 pt-4 border-t border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-slate-700">Transactions</h2>
+            <button 
+              type="button" 
+              id="exportCsvBtn" 
+              class="text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+              title="Download spreadsheet CSV of all transactions"
+            >
+              📥 <span>Export CSV</span>
+            </button>
+          </div>
+
+          <!-- Account & Flow Filter Tabs -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs">
+            <button 
+              type="button" 
+              id="filterAllBtn" 
+              class="px-2.5 py-1 rounded-md font-medium bg-white text-slate-800 shadow-sm"
+            >
+              All
+            </button>
+            <button 
+              type="button" 
+              id="filterBankBtn" 
+              class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900"
+            >
+              Bank
+            </button>
+            <button 
+              type="button" 
+              id="filterCardBtn" 
+              class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900"
+            >
+              Credit Card
+            </button>
+            <button 
+              type="button" 
+              id="filterIncomeBtn" 
+              class="px-2.5 py-1 rounded-md font-medium text-emerald-700 hover:text-emerald-900"
+            >
+              Income Only
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty state placeholder -->
+        <div id="emptyState" class="text-center py-8 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+          <p class="text-sm font-medium">No transactions found</p>
+          <p class="text-xs text-slate-400 mt-1">Add expenses or income manually, or import a statement above.</p>
+        </div>
+
+        <!-- Dynamic List -->
+        <ul id="expenseList" class="space-y-2 hidden"></ul>
+      </section>
+    </main>
+  </div>
+
+  <!-- IN-PAGE PASSWORD PROMPT MODAL (Enhanced with Callback Handling & UAE Bank Password Guide) -->
+  <div id="pdfPasswordModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm p-5 space-y-4">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">
+            🔑
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-800">Password Required</h4>
+            <p class="text-xs text-slate-500">This PDF document is encrypted.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label for="modalPasswordInput" class="block text-xs font-semibold text-slate-700 mb-1">Document Password</label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="modalPasswordInput" 
+              placeholder="e.g. DDMMYYYY or custom password" 
+              class="w-full pl-3 pr-10 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+            <button 
+              type="button" 
+              id="toggleModalPasswordVisibilityBtn" 
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1"
+              title="Show / Hide password"
+            >
+              👁
+            </button>
+          </div>
+        </div>
+
+        <p id="modalErrorMsg" class="hidden text-[11px] text-rose-600 font-medium"></p>
+
+        <!-- Common Bank Password Tips for UAE & International Users -->
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[11px] text-slate-600 space-y-1">
+          <p class="font-bold text-slate-800">💡 Common Bank Password Formats:</p>
+          <ul class="list-disc list-inside space-y-0.5 text-slate-500 text-[10.5px]">
+            <li><strong>Emirates NBD</strong>: Date of Birth (<code class="font-mono">DDMMYYYY</code>) or Mother's Maiden Name</li>
+            <li><strong>ADCB</strong>: Customer ID or Date of Birth (<code class="font-mono">DDMMYYYY</code>)</li>
+            <li><strong>Mashreq / FAB</strong>: Registered Mobile Number or Date of Birth</li>
+          </ul>
+        </div>
+
+        <label class="flex items-center gap-2 pt-1 text-xs text-slate-600 cursor-pointer">
+          <input type="checkbox" id="modalSaveCheckbox" checked class="rounded text-indigo-600 focus:ring-indigo-500">
+          <span>Remember and update saved password</span>
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button 
+          type="button" 
+          id="modalCancelBtn" 
+          class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          id="modalUnlockBtn" 
+          class="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shadow-sm"
+        >
+          Unlock & Check
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN-PAGE RESET CONFIRMATION MODAL -->
+  <div id="resetConfirmModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm p-5 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-base font-bold">
+          ⚠️
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-slate-900">Clear All Tracker Data?</h4>
+          <p class="text-xs text-slate-500 mt-0.5">This will delete all transactions and fixed deposits from browser storage.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button 
+          type="button" 
+          id="cancelResetBtn" 
+          class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+        >
+          Keep Data
+        </button>
+        <button 
+          type="button" 
+          id="confirmResetBtn" 
+          class="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition shadow-sm"
+        >
+          Yes, Reset All
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN-PAGE HOSTING GUIDE MODAL -->
+  <div id="hostingGuideModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg font-bold">
+            🌐
+          </div>
+          <div>
+            <h4 class="text-base font-bold text-slate-900">Host Your App Online for Free</h4>
+            <p class="text-xs text-slate-500">Pick any option below to put your app on the live web in minutes.</p>
+          </div>
+        </div>
+        <button 
+          type="button" 
+          id="closeHostingModalBtn" 
+          class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 leading-none"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-700">
+        <div class="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-1.5">
+          <p class="font-bold text-indigo-950 flex items-center justify-between">
+            <span>Option 1: Netlify Drop (Fastest — 30 seconds, No code/terminal)</span>
+            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-semibold">Recommended</span>
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed">
+            <li>Download your standalone app file using the button below (saves as <code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-indigo-700 font-mono">index.html</code>).</li>
+            <li>Put <code class="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono">index.html</code> into a folder on your computer.</li>
+            <li>Visit <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-semibold">app.netlify.com/drop</a> in your browser.</li>
+            <li>Drag and drop that folder onto the page. Your app is immediately live with a free shareable HTTPS web link!</li>
+          </ol>
+        </div>
+
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
+          <p class="font-bold text-slate-900">Option 2: GitHub Pages (Permanent & Version Controlled)</p>
+          <ol class="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed">
+            <li>Create a new repository on <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-semibold">GitHub.com</a> (e.g. <code class="bg-white px-1 py-0.5 rounded font-mono">my-expense-tracker</code>).</li>
+            <li>Upload your <code class="bg-white px-1 py-0.5 rounded font-mono">index.html</code> file to the root of the repository.</li>
+            <li>Go to <strong>Settings &rarr; Pages</strong>, set the branch to <strong>main</strong>, and click <strong>Save</strong>.</li>
+            <li>GitHub gives you a free live URL: <code class="bg-white px-1 py-0.5 rounded font-mono">https://username.github.io/my-expense-tracker</code>!</li>
+          </ol>
+        </div>
+
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
+          <p class="font-bold text-slate-900">Option 3: Vercel (Instant Cloud Deployment)</p>
+          <p class="text-slate-600 leading-relaxed">
+            Connect your GitHub repository to <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-semibold">Vercel.com</a>. It detects the HTML file automatically and provisions an instant global CDN link with custom domain support.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        <button 
+          type="button" 
+          id="downloadHtmlBtn" 
+          class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2 px-4 rounded-lg transition shadow-sm flex items-center justify-center gap-1.5"
+        >
+          💾 <span>Download index.html File</span>
+        </button>
+        <button 
+          type="button" 
+          id="dismissHostingModalBtn" 
+          class="w-full sm:w-auto px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition text-center"
+        >
+          Close Guide
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1. MULTI-CURRENCY ACCOUNTS & EXCHANGE RATES
+    const ACCOUNTS = {
+      bank: { name: 'Bank Account (Checking)', currency: 'AED', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+      credit_card: { name: 'Credit Card', currency: 'USD', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+      fixed_deposit: { name: 'Fixed Deposits Portfolio', currency: 'AED', color: 'bg-amber-100 text-amber-800 border-amber-200' }
+    };
+
+    const USD_TO_AED = 3.6725;
+    const EUR_TO_AED = 4.00;
+    const GBP_TO_AED = 4.75;
+
+    function convertAmount(amount, fromCurr, toCurr) {
+      if (fromCurr === toCurr) return amount;
+      
+      let inAed = amount;
+      if (fromCurr === 'USD') inAed = amount * USD_TO_AED;
+      else if (fromCurr === 'EUR') inAed = amount * EUR_TO_AED;
+      else if (fromCurr === 'GBP') inAed = amount * GBP_TO_AED;
+
+      if (toCurr === 'AED') return inAed;
+      if (toCurr === 'USD' || toCurr === '$') return inAed / USD_TO_AED;
+      if (toCurr === 'EUR') return inAed / EUR_TO_AED;
+      if (toCurr === 'GBP') return inAed / GBP_TO_AED;
+      return inAed;
+    }
+
+    const CATEGORIES = {
+      groceries: { name: 'Groceries & Food', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', barColor: 'bg-emerald-500', chartColor: '#10b981', isIncome: false },
+      transport: { name: 'Transport & Fuel', color: 'bg-amber-100 text-amber-800 border-amber-200', barColor: 'bg-amber-500', chartColor: '#f59e0b', isIncome: false },
+      utilities: { name: 'Bills & Utilities', color: 'bg-cyan-100 text-cyan-800 border-cyan-200', barColor: 'bg-cyan-500', chartColor: '#06b6d4', isIncome: false },
+      entertainment: { name: 'Entertainment', color: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200', barColor: 'bg-fuchsia-500', chartColor: '#d946ef', isIncome: false },
+      shopping: { name: 'Shopping & Other', color: 'bg-slate-100 text-slate-700 border-slate-200', barColor: 'bg-slate-500', chartColor: '#64748b', isIncome: false },
+      salary: { name: 'Salary & Payroll', color: 'bg-emerald-100 text-emerald-900 border-emerald-300', barColor: 'bg-emerald-600', chartColor: '#059669', isIncome: true },
+      freelance: { name: 'Freelance & Business', color: 'bg-teal-100 text-teal-900 border-teal-300', barColor: 'bg-teal-600', chartColor: '#0d9488', isIncome: true },
+      investment: { name: 'Investments & Returns', color: 'bg-sky-100 text-sky-900 border-sky-300', barColor: 'bg-sky-600', chartColor: '#0284c7', isIncome: true },
+      refund: { name: 'Refunds & Other Income', color: 'bg-lime-100 text-lime-900 border-lime-300', barColor: 'bg-lime-600', chartColor: '#65a30d', isIncome: true }
+    };
+
+    function detectCategoryAndType(title, rawAmtStr = '', explicitType = null) {
+      const t = title.toLowerCase();
+
+      if (explicitType === 'income') {
+        if (t.includes('salary') || t.includes('payroll') || t.includes('wage') || t.includes('transfer in')) return { category: 'salary', type: 'income' };
+        if (t.includes('freelance') || t.includes('consulting') || t.includes('invoice') || t.includes('client')) return { category: 'freelance', type: 'income' };
+        if (t.includes('dividend') || t.includes('interest') || t.includes('deposit payout') || t.includes('profit') || t.includes('return') || t.includes('term deposit')) return { category: 'investment', type: 'income' };
+        if (t.includes('refund') || t.includes('cashback') || t.includes('reversal')) return { category: 'refund', type: 'income' };
+        return { category: 'investment', type: 'income' };
+      }
+
+      if (explicitType === 'expense') {
+        if (t.includes('grocer') || t.includes('market') || t.includes('food') || t.includes('coffee') || t.includes('cafe') || t.includes('carrefour') || t.includes('lulu') || t.includes('spinneys') || t.includes('restaurant') || t.includes('dining')) return { category: 'groceries', type: 'expense' };
+        if (t.includes('gas') || t.includes('fuel') || t.includes('petrol') || t.includes('enoc') || t.includes('adnoc') || t.includes('metro') || t.includes('taxi') || t.includes('uber') || t.includes('careem') || t.includes('salik') || t.includes('bus')) return { category: 'transport', type: 'expense' };
+        if (t.includes('electric') || t.includes('dewa') || t.includes('bill') || t.includes('water') || t.includes('utility') || t.includes('du ') || t.includes('etisalat') || t.includes('internet') || t.includes('telecom')) return { category: 'utilities', type: 'expense' };
+        if (t.includes('netflix') || t.includes('spotify') || t.includes('cinema') || t.includes('movie') || t.includes('stream') || t.includes('gym') || t.includes('fitness') || t.includes('youtube')) return { category: 'entertainment', type: 'expense' };
+        return { category: 'shopping', type: 'expense' };
+      }
+
+      if (t.includes('salary') || t.includes('payroll') || t.includes('wage') || t.includes('compensation') || t.includes('transfer in') || t.includes('deposit from')) {
+        return { category: 'salary', type: 'income' };
+      }
+      if (t.includes('freelance') || t.includes('consulting') || t.includes('client payment') || t.includes('invoice payment')) {
+        return { category: 'freelance', type: 'income' };
+      }
+      if (t.includes('dividend') || t.includes('interest deposit') || t.includes('profit share') || t.includes('investment return') || t.includes('fd interest')) {
+        return { category: 'investment', type: 'income' };
+      }
+      if (t.includes('refund') || t.includes('reimbursement') || t.includes('cashback') || t.includes('reversal')) {
+        return { category: 'refund', type: 'income' };
+      }
+
+      if (t.includes('grocer') || t.includes('market') || t.includes('food') || t.includes('coffee') || t.includes('cafe') || t.includes('carrefour') || t.includes('lulu') || t.includes('spinneys') || t.includes('restaurant') || t.includes('dining')) {
+        return { category: 'groceries', type: 'expense' };
+      }
+      if (t.includes('gas') || t.includes('fuel') || t.includes('petrol') || t.includes('enoc') || t.includes('adnoc') || t.includes('metro') || t.includes('taxi') || t.includes('uber') || t.includes('careem') || t.includes('salik') || t.includes('bus')) {
+        return { category: 'transport', type: 'expense' };
+      }
+      if (t.includes('electric') || t.includes('dewa') || t.includes('bill') || t.includes('water') || t.includes('utility') || t.includes('du ') || t.includes('etisalat') || t.includes('internet') || t.includes('telecom')) {
+        return { category: 'utilities', type: 'expense' };
+      }
+      if (t.includes('netflix') || t.includes('spotify') || t.includes('cinema') || t.includes('movie') || t.includes('stream') || t.includes('gym') || t.includes('fitness') || t.includes('youtube')) {
+        return { category: 'entertainment', type: 'expense' };
+      }
+
+      return { category: 'shopping', type: 'expense' };
+    }
+
+    // 2. STATE MANAGEMENT & LOCAL STORAGE PERSISTENCE
+    let expenses = [];
+    let fixedDeposits = [];
+    let currentFilter = 'all';
+    let savedStatementPassword = '';
+    let monthlyBudget = 7500;
+    let currencySymbol = 'AED';
+    let currentChartType = 'doughnut';
+    let chartInstance = null;
+
+    // ACTIVE DECRYPTION CONTEXT (Ensures Master Buffer is Never Neutered)
+    let activePasswordCallback = null;
+    let activeMasterBuffer = null;
+    let activeTargetAccount = null;
+    let activePdfSource = null; // 'statement' or 'fixed_deposit'
+
+    try {
+      const storedExpenses = localStorage.getItem('daily_expense_tracker_items');
+      if (storedExpenses) expenses = JSON.parse(storedExpenses);
+
+      const storedFds = localStorage.getItem('daily_expense_tracker_fds');
+      if (storedFds) fixedDeposits = JSON.parse(storedFds);
+      
+      const storedPwd = localStorage.getItem('daily_expense_tracker_pwd');
+      if (storedPwd) savedStatementPassword = storedPwd;
+
+      const storedBudget = localStorage.getItem('daily_expense_tracker_budget');
+      if (storedBudget) monthlyBudget = parseFloat(storedBudget) || 7500;
+
+      const storedCurr = localStorage.getItem('daily_expense_tracker_curr');
+      if (storedCurr) currencySymbol = storedCurr;
+    } catch (e) {
+      console.warn('localStorage read error:', e);
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('daily_expense_tracker_items', JSON.stringify(expenses));
+        localStorage.setItem('daily_expense_tracker_fds', JSON.stringify(fixedDeposits));
+        localStorage.setItem('daily_expense_tracker_pwd', savedStatementPassword);
+        localStorage.setItem('daily_expense_tracker_budget', monthlyBudget.toString());
+        localStorage.setItem('daily_expense_tracker_curr', currencySymbol);
+      } catch (e) {
+        console.warn('localStorage write error:', e);
+      }
+    }
+
+    function formatCurrency(amount, curr) {
+      if (curr === 'AED') return `AED ${amount.toFixed(2)}`;
+      if (curr === 'USD' || curr === '$') return `$${amount.toFixed(2)}`;
+      if (curr === 'EUR') return `€${amount.toFixed(2)}`;
+      if (curr === 'GBP') return `£${amount.toFixed(2)}`;
+      return `${curr} ${amount.toFixed(2)}`;
+    }
+
+    function formatBaseMoney(amountInBase) {
+      return formatCurrency(amountInBase, currencySymbol);
+    }
+
+    // 3. DUPLICATE DETECTION ENGINE
+    function generateTransactionFingerprint(item) {
+      const cleanTitle = item.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanAmt = item.amount.toFixed(2);
+      const cleanDate = (item.date || '').trim();
+      const acc = item.account || 'bank';
+      const type = item.type || 'expense';
+      return `${cleanDate}|${acc}|${type}|${cleanAmt}|${cleanTitle}`;
+    }
+
+    function detectDuplicateIds() {
+      const seen = new Map();
+      const duplicateIds = new Set();
+
+      expenses.forEach(item => {
+        const fp = generateTransactionFingerprint(item);
+        if (seen.has(fp)) {
+          duplicateIds.add(item.id);
+          duplicateIds.add(seen.get(fp));
+        } else {
+          seen.set(fp, item.id);
+        }
+      });
+
+      return duplicateIds;
+    }
+
+    function isDuplicateItem(candidate, existingList) {
+      const candFp = generateTransactionFingerprint(candidate);
+      return existingList.some(item => generateTransactionFingerprint(item) === candFp);
+    }
+
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // 4. DOM ELEMENT REFERENCES
+    const totalDisplay = document.getElementById('totalDisplay');
+    const countDisplay = document.getElementById('countDisplay');
+    const totalIncomeDisplay = document.getElementById('totalIncomeDisplay');
+    const incomeCountDisplay = document.getElementById('incomeCountDisplay');
+    const netCashflowDisplay = document.getElementById('netCashflowDisplay');
+    const netCashflowSubtext = document.getElementById('netCashflowSubtext');
+    const savingsRateBadge = document.getElementById('savingsRateBadge');
+
+    const bankTotalDisplay = document.getElementById('bankTotalDisplay');
+    const bankCountDisplay = document.getElementById('bankCountDisplay');
+    const bankNetIndicator = document.getElementById('bankNetIndicator');
+    const cardTotalDisplay = document.getElementById('cardTotalDisplay');
+    const cardCountDisplay = document.getElementById('cardCountDisplay');
+    const cardConvertedNote = document.getElementById('cardConvertedNote');
+    
+    const fdTotalDisplay = document.getElementById('fdTotalDisplay');
+    const fdCountDisplay = document.getElementById('fdCountDisplay');
+    const fdEstInterestNote = document.getElementById('fdEstInterestNote');
+
+    const baseCurrLabel = document.getElementById('baseCurrLabel');
+    const categoryBarsContainer = document.getElementById('categoryBarsContainer');
+
+    const duplicateAlertBanner = document.getElementById('duplicateAlertBanner');
+    const duplicateCountText = document.getElementById('duplicateCountText');
+    const filterDuplicatesBtn = document.getElementById('filterDuplicatesBtn');
+    const resolveDuplicatesBtn = document.getElementById('resolveDuplicatesBtn');
+    const skipDuplicatesCheckbox = document.getElementById('skipDuplicatesCheckbox');
+    const sampleDuplicateTestBtn = document.getElementById('sampleDuplicateTestBtn');
+    const sampleSalaryDepositBtn = document.getElementById('sampleSalaryDepositBtn');
+
+    const categoryDoughnutChart = document.getElementById('categoryDoughnutChart');
+    const chartEmptyMessage = document.getElementById('chartEmptyMessage');
+    const chartTypeDoughnutBtn = document.getElementById('chartTypeDoughnutBtn');
+    const chartTypePieBtn = document.getElementById('chartTypePieBtn');
+
+    const currUsdBtn = document.getElementById('currUsdBtn');
+    const currAedBtn = document.getElementById('currAedBtn');
+
+    const budgetSpentVal = document.getElementById('budgetSpentVal');
+    const budgetLimitVal = document.getElementById('budgetLimitVal');
+    const budgetProgressBar = document.getElementById('budgetProgressBar');
+    const budgetBadge = document.getElementById('budgetBadge');
+    const editBudgetBtn = document.getElementById('editBudgetBtn');
+    const budgetEditorRow = document.getElementById('budgetEditorRow');
+    const budgetInput = document.getElementById('budgetInput');
+    const saveBudgetBtn = document.getElementById('saveBudgetBtn');
+
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+
+    const tabManualBtn = document.getElementById('tabManualBtn');
+    const tabUploadBtn = document.getElementById('tabUploadBtn');
+    const tabFdBtn = document.getElementById('tabFdBtn');
+
+    const manualSection = document.getElementById('manualSection');
+    const uploadSection = document.getElementById('uploadSection');
+    const fdSection = document.getElementById('fdSection');
+
+    // FD Form & Upload Elements
+    const fdFileInput = document.getElementById('fdFileInput');
+    const processFdFileBtn = document.getElementById('processFdFileBtn');
+    const fdUploadSpinner = document.getElementById('fdUploadSpinner');
+    const sampleFdUploadDemoBtn = document.getElementById('sampleFdUploadDemoBtn');
+
+    const fdForm = document.getElementById('fdForm');
+    const fdTitleInput = document.getElementById('fdTitle');
+    const fdCurrencyInput = document.getElementById('fdCurrency');
+    const fdPrincipalInput = document.getElementById('fdPrincipal');
+    const fdRateInput = document.getElementById('fdRate');
+    const fdTenureInput = document.getElementById('fdTenure');
+    const fdStartDateInput = document.getElementById('fdStartDate');
+    const previewMaturityDate = document.getElementById('previewMaturityDate');
+    const previewInterestVal = document.getElementById('previewInterestVal');
+    const previewTotalMaturityVal = document.getElementById('previewTotalMaturityVal');
+    const addFdBtn = document.getElementById('addFdBtn');
+    const sampleFdBtn = document.getElementById('sampleFdBtn');
+    const fdListContainer = document.getElementById('fdListContainer');
+    const emptyFdState = document.getElementById('emptyFdState');
+    const fdPortfolioSummaryBadge = document.getElementById('fdPortfolioSummaryBadge');
+
+    const expenseForm = document.getElementById('expenseForm');
+    const typeExpenseRadio = document.getElementById('typeExpenseRadio');
+    const typeIncomeRadio = document.getElementById('typeIncomeRadio');
+    const titleFieldLabel = document.getElementById('titleFieldLabel');
+    const accountFieldLabel = document.getElementById('accountFieldLabel');
+    const expenseTitleInput = document.getElementById('expenseTitle');
+    const expenseAmountInput = document.getElementById('expenseAmount');
+    const expenseAccountInput = document.getElementById('expenseAccount');
+    const manualAmountCurrencyLabel = document.getElementById('manualAmountCurrencyLabel');
+    const expenseCategoryInput = document.getElementById('expenseCategory');
+    const expenseDateInput = document.getElementById('expenseDate');
+    const addBtn = document.getElementById('addBtn');
+
+    const statementPasswordInput = document.getElementById('statementPasswordInput');
+    const togglePasswordVisibilityBtn = document.getElementById('togglePasswordVisibilityBtn');
+    const savePasswordBtn = document.getElementById('savePasswordBtn');
+    const clearPasswordBtn = document.getElementById('clearPasswordBtn');
+    const passwordStatusBadge = document.getElementById('passwordStatusBadge');
+
+    const uploadTargetAccount = document.getElementById('uploadTargetAccount');
+    const csvFileInput = document.getElementById('csvFileInput');
+    const processCsvBtn = document.getElementById('processCsvBtn');
+    const processBtnSpinner = document.getElementById('processBtnSpinner');
+    const processBtnText = document.getElementById('processBtnText');
+
+    const samplePdfBtn = document.getElementById('samplePdfBtn');
+    const sampleBankBtn = document.getElementById('sampleBankBtn');
+    const sampleCardBtn = document.getElementById('sampleCardBtn');
+
+    const filterAllBtn = document.getElementById('filterAllBtn');
+    const filterBankBtn = document.getElementById('filterBankBtn');
+    const filterCardBtn = document.getElementById('filterCardBtn');
+    const filterIncomeBtn = document.getElementById('filterIncomeBtn');
+
+    const expenseList = document.getElementById('expenseList');
+    const emptyState = document.getElementById('emptyState');
+    const statusMessage = document.getElementById('statusMessage');
+
+    const pdfPasswordModal = document.getElementById('pdfPasswordModal');
+    const modalPasswordInput = document.getElementById('modalPasswordInput');
+    const modalErrorMsg = document.getElementById('modalErrorMsg');
+    const modalSaveCheckbox = document.getElementById('modalSaveCheckbox');
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+    const modalUnlockBtn = document.getElementById('modalUnlockBtn');
+    const toggleModalPasswordVisibilityBtn = document.getElementById('toggleModalPasswordVisibilityBtn');
+
+    const openResetModalBtn = document.getElementById('openResetModalBtn');
+    const resetConfirmModal = document.getElementById('resetConfirmModal');
+    const cancelResetBtn = document.getElementById('cancelResetBtn');
+    const confirmResetBtn = document.getElementById('confirmResetBtn');
+
+    const openHostingModalBtn = document.getElementById('openHostingModalBtn');
+    const hostingGuideModal = document.getElementById('hostingGuideModal');
+    const closeHostingModalBtn = document.getElementById('closeHostingModalBtn');
+    const dismissHostingModalBtn = document.getElementById('dismissHostingModalBtn');
+    const downloadHtmlBtn = document.getElementById('downloadHtmlBtn');
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    expenseDateInput.value = todayStr;
+    fdStartDateInput.value = todayStr;
+    budgetInput.value = monthlyBudget.toString();
+
+    // 5. TRANSACTION TYPE SWITCHER
+    function updateFormForTransactionType() {
+      const isIncome = typeIncomeRadio.checked;
+      if (isIncome) {
+        titleFieldLabel.textContent = 'Income Source / Description';
+        expenseTitleInput.placeholder = 'e.g., Monthly Salary, Consulting fee, Dividend';
+        accountFieldLabel.textContent = 'Deposit Into Account';
+        expenseCategoryInput.value = 'salary';
+      } else {
+        titleFieldLabel.textContent = 'What did you spend on?';
+        expenseTitleInput.placeholder = 'e.g., Carrefour groceries, ENOC fuel, Netflix';
+        accountFieldLabel.textContent = 'Charge To Account';
+        expenseCategoryInput.value = 'groceries';
+      }
+    }
+
+    typeExpenseRadio.addEventListener('change', updateFormForTransactionType);
+    typeIncomeRadio.addEventListener('change', updateFormForTransactionType);
+
+    expenseAccountInput.addEventListener('change', () => {
+      const accKey = expenseAccountInput.value;
+      const accCurr = ACCOUNTS[accKey]?.currency || 'AED';
+      manualAmountCurrencyLabel.textContent = `(${accCurr})`;
+    });
+
+    // 6. HOSTING GUIDE & DOWNLOAD APP
+    openHostingModalBtn.addEventListener('click', () => {
+      hostingGuideModal.classList.remove('hidden');
+    });
+
+    closeHostingModalBtn.addEventListener('click', () => {
+      hostingGuideModal.classList.add('hidden');
+    });
+
+    dismissHostingModalBtn.addEventListener('click', () => {
+      hostingGuideModal.classList.add('hidden');
+    });
+
+    downloadHtmlBtn.addEventListener('click', () => {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'index.html');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showNotification('index.html downloaded! Ready to drop into Netlify or GitHub Pages.', 'success');
+    });
+
+    // 7. CHART.JS INTERACTIVE VISUALIZATION
+    chartTypeDoughnutBtn.addEventListener('click', () => {
+      currentChartType = 'doughnut';
+      chartTypeDoughnutBtn.className = 'px-2 py-0.5 rounded font-semibold bg-white text-slate-800 shadow-2xs';
+      chartTypePieBtn.className = 'px-2 py-0.5 rounded font-medium text-slate-600 hover:text-slate-900';
+      updateChartVisuals();
+    });
+
+    chartTypePieBtn.addEventListener('click', () => {
+      currentChartType = 'pie';
+      chartTypePieBtn.className = 'px-2 py-0.5 rounded font-semibold bg-white text-slate-800 shadow-2xs';
+      chartTypeDoughnutBtn.className = 'px-2 py-0.5 rounded font-medium text-slate-600 hover:text-slate-900';
+      updateChartVisuals();
+    });
+
+    function updateChartVisuals() {
+      if (typeof Chart === 'undefined') return;
+
+      const catTotals = {};
+      Object.keys(CATEGORIES).forEach(k => catTotals[k] = 0);
+
+      const expenseListOnly = expenses.filter(i => (i.type || 'expense') === 'expense');
+
+      expenseListOnly.forEach(item => {
+        const k = item.category || 'shopping';
+        const itemCurr = item.currency || ACCOUNTS[item.account]?.currency || 'AED';
+        const converted = convertAmount(item.amount, itemCurr, currencySymbol);
+
+        if (catTotals[k] !== undefined) {
+          catTotals[k] += converted;
+        } else {
+          catTotals['shopping'] += converted;
+        }
+      });
+
+      const activeKeys = Object.keys(CATEGORIES).filter(k => !CATEGORIES[k].isIncome && catTotals[k] > 0);
+
+      if (activeKeys.length === 0) {
+        chartEmptyMessage.classList.remove('hidden');
+        categoryDoughnutChart.classList.add('hidden');
+        if (chartInstance) {
+          chartInstance.destroy();
+          chartInstance = null;
+        }
+        return;
+      }
+
+      chartEmptyMessage.classList.add('hidden');
+      categoryDoughnutChart.classList.remove('hidden');
+
+      const labels = activeKeys.map(k => CATEGORIES[k].name);
+      const data = activeKeys.map(k => catTotals[k]);
+      const backgroundColors = activeKeys.map(k => CATEGORIES[k].chartColor);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const ctx = categoryDoughnutChart.getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: currentChartType,
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: backgroundColors,
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 10,
+                padding: 12,
+                font: {
+                  family: 'Inter',
+                  size: 11
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const val = context.parsed || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                  return ` ${label}: ${formatBaseMoney(val)} (${pct}%)`;
+                }
+              }
+            }
+          },
+          cutout: currentChartType === 'doughnut' ? '65%' : 0
+        }
+      });
+    }
+
+    // 8. CURRENCY SWITCHING
+    function updateCurrencyButtons() {
+      if (currencySymbol === 'AED') {
+        currAedBtn.className = 'px-2 py-1 rounded-md font-bold bg-white text-indigo-900 shadow-xs';
+        currUsdBtn.className = 'px-2 py-1 rounded-md font-bold text-indigo-200 hover:text-white';
+        baseCurrLabel.textContent = 'Base: AED';
+      } else {
+        currUsdBtn.className = 'px-2 py-1 rounded-md font-bold bg-white text-indigo-900 shadow-xs';
+        currAedBtn.className = 'px-2 py-1 rounded-md font-bold text-indigo-200 hover:text-white';
+        baseCurrLabel.textContent = 'Base: USD';
+      }
+    }
+
+    currUsdBtn.addEventListener('click', () => {
+      currencySymbol = '$';
+      updateCurrencyButtons();
+      saveState();
+      renderApp();
+      showNotification('Base display currency switched to USD ($)');
+    });
+
+    currAedBtn.addEventListener('click', () => {
+      currencySymbol = 'AED';
+      updateCurrencyButtons();
+      saveState();
+      renderApp();
+      showNotification('Base display currency switched to UAE Dirham (AED)');
+    });
+
+    // 9. BUDGET CONTROLS
+    editBudgetBtn.addEventListener('click', () => {
+      budgetEditorRow.classList.toggle('hidden');
+      if (!budgetEditorRow.classList.contains('hidden')) {
+        budgetInput.focus();
+      }
+    });
+
+    saveBudgetBtn.addEventListener('click', () => {
+      const val = parseFloat(budgetInput.value);
+      if (!isNaN(val) && val > 0) {
+        monthlyBudget = val;
+        saveState();
+        budgetEditorRow.classList.add('hidden');
+        renderApp();
+        showNotification(`Monthly budget updated to ${formatBaseMoney(monthlyBudget)}!`);
+      }
+    });
+
+    function renderBudget(totalExpensesInBase) {
+      budgetSpentVal.textContent = formatBaseMoney(totalExpensesInBase);
+      budgetLimitVal.textContent = formatBaseMoney(monthlyBudget);
+
+      const ratio = totalExpensesInBase / monthlyBudget;
+      const pct = Math.min(Math.round(ratio * 100), 100);
+      budgetProgressBar.style.width = `${pct}%`;
+
+      if (ratio > 1.0) {
+        budgetProgressBar.className = 'bg-rose-500 h-2.5 rounded-full transition-all duration-300';
+        budgetBadge.textContent = 'Over Budget!';
+        budgetBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200';
+      } else if (ratio >= 0.8) {
+        budgetProgressBar.className = 'bg-amber-500 h-2.5 rounded-full transition-all duration-300';
+        budgetBadge.textContent = 'Near Limit';
+        budgetBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200';
+      } else {
+        budgetProgressBar.className = 'bg-emerald-500 h-2.5 rounded-full transition-all duration-300';
+        budgetBadge.textContent = 'On Track';
+        budgetBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200';
+      }
+    }
+
+    // 10. DUPLICATE RESOLUTION ACTIONS
+    filterDuplicatesBtn.addEventListener('click', () => {
+      currentFilter = 'duplicates';
+      renderApp();
+      showNotification('Filtered to show duplicate transactions.', 'info');
+    });
+
+    resolveDuplicatesBtn.addEventListener('click', () => {
+      const seenFp = new Set();
+      const uniqueList = [];
+      let removedCount = 0;
+
+      expenses.forEach(item => {
+        const fp = generateTransactionFingerprint(item);
+        if (!seenFp.has(fp)) {
+          seenFp.add(fp);
+          uniqueList.push(item);
+        } else {
+          removedCount++;
+        }
+      });
+
+      expenses = uniqueList;
+      saveState();
+      currentFilter = 'all';
+      renderApp();
+      showNotification(`Resolved and cleaned ${removedCount} duplicate transaction(s)!`, 'success');
+    });
+
+    // 11. CSV DATA EXPORT
+    exportCsvBtn.addEventListener('click', () => {
+      if (expenses.length === 0 && fixedDeposits.length === 0) {
+        showNotification('No records to export yet.', 'error');
+        return;
+      }
+
+      let csvContent = 'RECORD_TYPE,TITLE_OR_DESC,ACCOUNT_OR_BANK,CURRENCY,AMOUNT_OR_PRINCIPAL,INTEREST_RATE,START_DATE,MATURITY_DATE\n';
+      
+      expenses.forEach(item => {
+        const accInfo = ACCOUNTS[item.account] || ACCOUNTS.bank;
+        const accName = accInfo.name;
+        const accCurr = item.currency || accInfo.currency;
+        const type = item.type || 'expense';
+        const cleanDesc = `"${item.title.replace(/"/g, '""')}"`;
+        csvContent += `TRANSACTION_${type.toUpperCase()},${cleanDesc},${accName},${accCurr},${item.amount.toFixed(2)},N/A,${item.date || todayStr},N/A\n`;
+      });
+
+      fixedDeposits.forEach(fd => {
+        const cleanTitle = `"${fd.title.replace(/"/g, '""')}"`;
+        csvContent += `FIXED_DEPOSIT,${cleanTitle},${fd.currency}_FD,${fd.currency},${fd.principal.toFixed(2)},${fd.interestRate}%,${fd.startDate},${fd.maturityDate}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `wealth_and_cashflow_export_${todayStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showNotification('Portfolio & cashflow spreadsheet downloaded!', 'success');
+    });
+
+    // 12. TAB SWITCHING
+    tabManualBtn.addEventListener('click', () => switchTab('manual'));
+    tabUploadBtn.addEventListener('click', () => switchTab('upload'));
+    tabFdBtn.addEventListener('click', () => switchTab('fd'));
+
+    function switchTab(tab) {
+      manualSection.classList.add('hidden');
+      uploadSection.classList.add('hidden');
+      fdSection.classList.add('hidden');
+
+      tabManualBtn.className = 'pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2';
+      tabUploadBtn.className = 'pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2';
+      tabFdBtn.className = 'pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2';
+
+      if (tab === 'manual') {
+        manualSection.classList.remove('hidden');
+        tabManualBtn.className = 'pb-3 border-b-2 border-indigo-600 text-indigo-600 font-semibold flex items-center gap-2';
+      } else if (tab === 'upload') {
+        uploadSection.classList.remove('hidden');
+        tabUploadBtn.className = 'pb-3 border-b-2 border-indigo-600 text-indigo-600 font-semibold flex items-center gap-2';
+      } else if (tab === 'fd') {
+        fdSection.classList.remove('hidden');
+        tabFdBtn.className = 'pb-3 border-b-2 border-amber-600 text-amber-700 font-semibold flex items-center gap-2';
+      }
+    }
+
+    // 13. PASSWORD MANAGEMENT
+    function updatePasswordBadge() {
+      if (savedStatementPassword) {
+        passwordStatusBadge.textContent = 'Password Configured';
+        passwordStatusBadge.className = 'text-[11px] font-medium bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300/60';
+        statementPasswordInput.value = savedStatementPassword;
+      } else {
+        passwordStatusBadge.textContent = 'No password set';
+        passwordStatusBadge.className = 'text-[11px] font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300/60';
+        statementPasswordInput.value = '';
+      }
+    }
+
+    savePasswordBtn.addEventListener('click', () => {
+      const pwd = statementPasswordInput.value.trim();
+      if (!pwd) {
+        showNotification('Please enter a password before updating.', 'error');
+        return;
+      }
+      savedStatementPassword = pwd;
+      saveState();
+      updatePasswordBadge();
+      showNotification('Statement password successfully updated and saved!', 'success');
+    });
+
+    clearPasswordBtn.addEventListener('click', () => {
+      savedStatementPassword = '';
+      statementPasswordInput.value = '';
+      saveState();
+      updatePasswordBadge();
+      showNotification('Saved statement password cleared.', 'info');
+    });
+
+    togglePasswordVisibilityBtn.addEventListener('click', () => {
+      if (statementPasswordInput.type === 'password') {
+        statementPasswordInput.type = 'text';
+      } else {
+        statementPasswordInput.type = 'password';
+      }
+    });
+
+    toggleModalPasswordVisibilityBtn.addEventListener('click', () => {
+      if (modalPasswordInput.type === 'password') {
+        modalPasswordInput.type = 'text';
+      } else {
+        modalPasswordInput.type = 'password';
+      }
+    });
+
+    // 14. FILTERING
+    filterAllBtn.addEventListener('click', () => setFilter('all'));
+    filterBankBtn.addEventListener('click', () => setFilter('bank'));
+    filterCardBtn.addEventListener('click', () => setFilter('credit_card'));
+    filterIncomeBtn.addEventListener('click', () => setFilter('income'));
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      const buttons = [
+        { btn: filterAllBtn, key: 'all' },
+        { btn: filterBankBtn, key: 'bank' },
+        { btn: filterCardBtn, key: 'credit_card' },
+        { btn: filterIncomeBtn, key: 'income' }
+      ];
+
+      buttons.forEach(({ btn, key }) => {
+        if (key === filter) {
+          btn.className = 'px-2.5 py-1 rounded-md font-medium bg-white text-slate-800 shadow-sm';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900';
+        }
+      });
+
+      renderApp();
+    }
+
+    // 15. FIXED DEPOSIT ENGINE & CALCULATIONS
+    function computeFdMaturity(startDateStr, tenureMonths) {
+      const start = new Date(startDateStr);
+      if (isNaN(start.getTime())) return todayStr;
+      const maturity = new Date(start);
+      maturity.setMonth(maturity.getMonth() + parseInt(tenureMonths));
+      return maturity.toISOString().split('T')[0];
+    }
+
+    function calculateFdInterest(principal, rate, tenureMonths) {
+      return principal * (rate / 100) * (tenureMonths / 12);
+    }
+
+    function updateFdPreview() {
+      const principal = parseFloat(fdPrincipalInput.value) || 0;
+      const rate = parseFloat(fdRateInput.value) || 0;
+      const tenure = parseInt(fdTenureInput.value) || 12;
+      const start = fdStartDateInput.value || todayStr;
+      const curr = fdCurrencyInput.value || 'AED';
+
+      const matDate = computeFdMaturity(start, tenure);
+      const interest = calculateFdInterest(principal, rate, tenure);
+      const totalMat = principal + interest;
+
+      previewMaturityDate.textContent = matDate;
+      previewInterestVal.textContent = `+${formatCurrency(interest, curr)}`;
+      previewTotalMaturityVal.textContent = formatCurrency(totalMat, curr);
+    }
+
+    [fdPrincipalInput, fdRateInput, fdTenureInput, fdStartDateInput, fdCurrencyInput].forEach(el => {
+      el.addEventListener('input', updateFdPreview);
+      el.addEventListener('change', updateFdPreview);
+    });
+
+    fdForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const title = fdTitleInput.value.trim();
+      const curr = fdCurrencyInput.value;
+      const principal = parseFloat(fdPrincipalInput.value);
+      const rate = parseFloat(fdRateInput.value);
+      const tenure = parseInt(fdTenureInput.value);
+      const startDate = fdStartDateInput.value || todayStr;
+
+      if (!title || isNaN(principal) || principal <= 0 || isNaN(rate) || rate <= 0) {
+        showNotification('Please fill all fixed deposit fields with valid numbers', 'error');
+        return;
+      }
+
+      const matDate = computeFdMaturity(startDate, tenure);
+      const expectedInterest = calculateFdInterest(principal, rate, tenure);
+
+      fixedDeposits.unshift({
+        id: Date.now(),
+        title: title,
+        currency: curr,
+        principal: principal,
+        interestRate: rate,
+        tenureMonths: tenure,
+        startDate: startDate,
+        maturityDate: matDate,
+        expectedInterest: expectedInterest
+      });
+
+      saveState();
+      fdTitleInput.value = '';
+      fdPrincipalInput.value = '';
+      fdRateInput.value = '';
+      updateFdPreview();
+
+      renderApp();
+      showNotification(`Saved Fixed Deposit: ${title} (${formatCurrency(principal, curr)} @ ${rate}% p.a.)!`, 'success');
+    });
+
+    sampleFdBtn.addEventListener('click', () => {
+      const start = todayStr;
+      fixedDeposits.unshift({
+        id: Date.now() + 1,
+        title: 'Emirates NBD 1-Year Step-Up FD',
+        currency: 'AED',
+        principal: 100000,
+        interestRate: 5.10,
+        tenureMonths: 12,
+        startDate: start,
+        maturityDate: computeFdMaturity(start, 12),
+        expectedInterest: calculateFdInterest(100000, 5.10, 12)
+      });
+
+      fixedDeposits.unshift({
+        id: Date.now() + 2,
+        title: 'ADCB High-Yield USD Term Deposit',
+        currency: 'USD',
+        principal: 20000,
+        interestRate: 4.85,
+        tenureMonths: 6,
+        startDate: start,
+        maturityDate: computeFdMaturity(start, 6),
+        expectedInterest: calculateFdInterest(20000, 4.85, 6)
+      });
+
+      saveState();
+      renderApp();
+      showNotification('Loaded 2 sample multi-currency Fixed Deposits (AED 100k & USD 20k)!', 'success');
+    });
+
+    // 16. FIXED DEPOSIT CERTIFICATE & STATEMENT UPLOAD ENGINE (CSV & PDF)
+    processFdFileBtn.addEventListener('click', function() {
+      const file = fdFileInput.files[0];
+      if (!file) {
+        showNotification('Please select an FD certificate or schedule file (.pdf or .csv) first.', 'error');
+        return;
+      }
+
+      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+
+      if (isPdf) {
+        fdUploadSpinner.classList.remove('hidden');
+        processFdFileBtn.disabled = true;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const buffer = e.target.result;
+          processFdPDF(buffer, savedStatementPassword);
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const text = e.target.result;
+          parseFdCSV(text);
+          fdFileInput.value = '';
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    async function processFdPDF(arrayBuffer, passwordAttempt) {
+      fdUploadSpinner.classList.remove('hidden');
+      processFdFileBtn.disabled = true;
+
+      // Retain clone of buffer so it is never neutered
+      activeMasterBuffer = arrayBuffer.slice(0);
+      activeTargetAccount = 'fixed_deposit';
+      activePdfSource = 'fixed_deposit';
+
+      try {
+        if (typeof pdfjsLib === 'undefined') {
+          throw new Error('PDF reader engine is still loading. Please try again.');
+        }
+
+        const bufferForWorker = arrayBuffer.slice(0);
+        const loadingTask = pdfjsLib.getDocument({
+          data: bufferForWorker,
+          password: passwordAttempt || ''
+        });
+
+        loadingTask.onPassword = function(callback, reason) {
+          activePasswordCallback = callback;
+          fdUploadSpinner.classList.add('hidden');
+          processFdFileBtn.disabled = false;
+          openPasswordModal(arrayBuffer.slice(0), 'fixed_deposit', reason === 2, 'fixed_deposit');
+        };
+
+        const pdf = await loadingTask.promise;
+        let extractedText = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          extractedText += textContent.items.map(item => item.str).join(' ') + '\n';
+        }
+
+        closePasswordModal();
+        if (passwordAttempt && modalSaveCheckbox.checked) {
+          savedStatementPassword = passwordAttempt;
+          saveState();
+          updatePasswordBadge();
+        }
+
+        parseFdCertificateText(extractedText);
+      } catch (err) {
+        console.error('FD PDF Parsing Error:', err);
+        if (err.name === 'PasswordException' || (err.message && err.message.toLowerCase().includes('password'))) {
+          openPasswordModal(arrayBuffer.slice(0), 'fixed_deposit', true, 'fixed_deposit');
+        } else {
+          showNotification(err.message || 'Error reading FD certificate PDF', 'error');
+        }
+      } finally {
+        fdUploadSpinner.classList.add('hidden');
+        processFdFileBtn.disabled = false;
+        fdFileInput.value = '';
+      }
+    }
+
+    function parseFdCertificateText(text) {
+      let title = 'Bank Fixed Deposit Certificate';
+      if (text.includes('Emirates NBD')) title = 'Emirates NBD Fixed Deposit';
+      else if (text.includes('ADCB')) title = 'ADCB Term Deposit';
+      else if (text.includes('Mashreq')) title = 'Mashreq Fixed Deposit';
+      else if (text.includes('FAB') || text.includes('First Abu Dhabi')) title = 'FAB Term Deposit';
+      else if (text.includes('Dubai Islamic') || text.includes('DIB')) title = 'DIB Wakala Deposit';
+
+      let curr = 'AED';
+      if (text.includes('USD') || text.includes('US Dollar') || text.includes('$')) curr = 'USD';
+      else if (text.includes('EUR') || text.includes('Euro') || text.includes('€')) curr = 'EUR';
+      else if (text.includes('GBP') || text.includes('Pound') || text.includes('£')) curr = 'GBP';
+
+      const amtMatch = text.match(/(?:principal|deposit amount|deposit value|face value|amount)\s*[:=]?\s*(?:[A-Za-z]{3}|\$|€|£)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/i);
+      let principal = 0;
+      if (amtMatch && amtMatch[1]) {
+        principal = parseFloat(amtMatch[1].replace(/,/g, ''));
+      } else {
+        const allNums = text.match(/\b([1-9][0-9]{3,6}(?:\.[0-9]{2})?)\b/g);
+        if (allNums && allNums.length > 0) {
+          principal = parseFloat(allNums[0]);
+        }
+      }
+
+      const rateMatch = text.match(/(?:interest rate|profit rate|rate of return|yield)\s*[:=]?\s*([0-9]{1,2}(?:\.[0-9]{1,3})?)\s*%/i);
+      let rate = 5.0;
+      if (rateMatch && rateMatch[1]) {
+        rate = parseFloat(rateMatch[1]);
+      } else {
+        const pctMatch = text.match(/\b([0-9]{1,2}\.[0-9]{2})\s*%/);
+        if (pctMatch) rate = parseFloat(pctMatch[1]);
+      }
+
+      let tenure = 12;
+      const tenureMatch = text.match(/\b([0-9]{1,2})\s*(?:months?|mths?)\b/i);
+      if (tenureMatch && tenureMatch[1]) {
+        tenure = parseInt(tenureMatch[1]);
+      }
+
+      const dateMatches = text.match(/\b(\d{4}[-/]\d{2}[-/]\d{2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/g) || [];
+      const startDate = dateMatches[0] || todayStr;
+      const matDate = dateMatches[1] || computeFdMaturity(startDate, tenure);
+
+      if (principal <= 0) principal = 50000;
+
+      const expectedInterest = calculateFdInterest(principal, rate, tenure);
+
+      const isDup = fixedDeposits.some(f => f.principal === principal && f.currency === curr && f.maturityDate === matDate);
+      if (isDup) {
+        showNotification(`This FD (${formatCurrency(principal, curr)} maturing ${matDate}) is already in your portfolio!`, 'error');
+        return;
+      }
+
+      fixedDeposits.unshift({
+        id: Date.now(),
+        title: title,
+        currency: curr,
+        principal: principal,
+        interestRate: rate,
+        tenureMonths: tenure,
+        startDate: startDate,
+        maturityDate: matDate,
+        expectedInterest: expectedInterest
+      });
+
+      saveState();
+      renderApp();
+      showNotification(`Decrypted & Imported FD: ${title} (${formatCurrency(principal, curr)} @ ${rate}% p.a.)!`, 'success');
+    }
+
+    function parseFdCSV(csvContent) {
+      const lines = csvContent.split(/\r?\n/).filter(line => line.trim() !== '');
+      if (lines.length < 2) {
+        showNotification('FD CSV file appears empty.', 'error');
+        return;
+      }
+
+      const headers = parseCSVLine(lines[0].toLowerCase());
+      let titleIdx = headers.findIndex(h => h.includes('name') || h.includes('title') || h.includes('bank') || h.includes('deposit'));
+      let currIdx = headers.findIndex(h => h.includes('curr'));
+      let prinIdx = headers.findIndex(h => h.includes('principal') || h.includes('amount') || h.includes('value'));
+      let rateIdx = headers.findIndex(h => h.includes('rate') || h.includes('yield') || h.includes('profit'));
+      let tenureIdx = headers.findIndex(h => h.includes('tenure') || h.includes('month') || h.includes('duration'));
+      let dateIdx = headers.findIndex(h => h.includes('date') || h.includes('start'));
+
+      if (titleIdx === -1) titleIdx = 0;
+      if (prinIdx === -1) prinIdx = 1;
+      if (rateIdx === -1) rateIdx = 2;
+
+      let added = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const row = parseCSVLine(lines[i]);
+        if (row.length <= Math.max(titleIdx, prinIdx)) continue;
+
+        const title = row[titleIdx] ? row[titleIdx].trim() : 'Term Deposit';
+        const curr = currIdx !== -1 && row[currIdx] ? row[currIdx].trim().toUpperCase() : 'AED';
+        const prin = parseFloat(row[prinIdx].replace(/[$,AEDaed\s]/g, ''));
+        const rate = rateIdx !== -1 && row[rateIdx] ? parseFloat(row[rateIdx].replace(/[%]/g, '')) : 5.0;
+        const tenure = tenureIdx !== -1 && row[tenureIdx] ? parseInt(row[tenureIdx]) : 12;
+        const startDate = dateIdx !== -1 && row[dateIdx] ? row[dateIdx].trim() : todayStr;
+
+        if (!isNaN(prin) && prin > 0) {
+          const matDate = computeFdMaturity(startDate, tenure);
+          fixedDeposits.unshift({
+            id: Date.now() + i,
+            title: title,
+            currency: curr,
+            principal: prin,
+            interestRate: isNaN(rate) ? 5.0 : rate,
+            tenureMonths: tenure,
+            startDate: startDate,
+            maturityDate: matDate,
+            expectedInterest: calculateFdInterest(prin, isNaN(rate) ? 5.0 : rate, tenure)
+          });
+          added++;
+        }
+      }
+
+      saveState();
+      renderApp();
+      if (added > 0) {
+        showNotification(`Successfully imported ${added} Fixed Deposit(s) from CSV!`, 'success');
+      } else {
+        showNotification('No valid deposit records detected in CSV.', 'error');
+      }
+    }
+
+    sampleFdUploadDemoBtn.addEventListener('click', () => {
+      const demoCertificateText = `
+EMIRATES NBD BANK PJSC
+DUBAI, UNITED ARAB EMIRATES
+FIXED DEPOSIT ADVICE / CONFIRMATION CERTIFICATE
+Account Number: 101-98765432-01
+Deposit Currency: AED
+Deposit Amount / Principal: AED 150,000.00
+Interest Rate: 5.25% p.a.
+Tenure: 12 Months
+Value Date / Start Date: 2026-10-15
+Maturity Date: 2027-10-15
+Maturity Payout Mode: Credit Principal & Interest to Checking
+      `;
+      parseFdCertificateText(demoCertificateText);
+    });
+
+    function renderFixedDeposits() {
+      fdListContainer.innerHTML = '';
+
+      if (fixedDeposits.length === 0) {
+        emptyFdState.classList.remove('hidden');
+        fdPortfolioSummaryBadge.textContent = '0 active FDs';
+      } else {
+        emptyFdState.classList.add('hidden');
+        fdPortfolioSummaryBadge.textContent = `${fixedDeposits.length} active deposit(s)`;
+
+        fixedDeposits.forEach(fd => {
+          const card = document.createElement('div');
+          card.className = 'p-4 rounded-xl border border-amber-200/90 bg-amber-50/40 space-y-3';
+
+          const today = new Date();
+          const mat = new Date(fd.maturityDate);
+          const diffDays = Math.ceil((mat - today) / (1000 * 60 * 60 * 24));
+          const isMatured = diffDays <= 0;
+
+          const daysBadge = isMatured 
+            ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">Matured</span>`
+            : `<span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">${diffDays} days left</span>`;
+
+          const convInBase = convertAmount(fd.principal, fd.currency, currencySymbol);
+
+          card.innerHTML = `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-300 shadow-2xs">
+                  ${fd.currency}
+                </span>
+                <h5 class="text-sm font-bold text-slate-800">${escapeHtml(fd.title)}</h5>
+              </div>
+              <div class="flex items-center gap-2">
+                ${daysBadge}
+                <button type="button" data-id="${fd.id}" class="delete-fd-btn text-slate-400 hover:text-rose-600 transition text-sm p-1" title="Delete Fixed Deposit">&times;</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-amber-200/60 text-xs">
+              <div>
+                <span class="text-slate-500 block text-[11px]">Principal</span>
+                <span class="font-bold text-slate-900">${formatCurrency(fd.principal, fd.currency)}</span>
+                ${fd.currency !== currencySymbol ? `<span class="block text-[10px] text-slate-400">≈ ${formatBaseMoney(convInBase)}</span>` : ''}
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[11px]">Yield Rate</span>
+                <span class="font-bold text-amber-900">${fd.interestRate.toFixed(2)}% p.a.</span>
+                <span class="block text-[10px] text-slate-400">${fd.tenureMonths} months</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[11px]">Est. Interest</span>
+                <span class="font-bold text-emerald-700">+${formatCurrency(fd.expectedInterest, fd.currency)}</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[11px]">Maturity Date</span>
+                <span class="font-semibold text-slate-800">${fd.maturityDate}</span>
+              </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button 
+                type="button" 
+                data-id="${fd.id}" 
+                class="credit-interest-btn text-[11px] font-semibold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-lg transition"
+              >
+                + Log Earned Interest to Cashflow
+              </button>
+            </div>
+          `;
+          fdListContainer.appendChild(card);
+        });
+
+        fdListContainer.querySelectorAll('.delete-fd-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = Number(this.getAttribute('data-id'));
+            fixedDeposits = fixedDeposits.filter(f => f.id !== id);
+            saveState();
+            renderApp();
+            showNotification('Fixed deposit removed.', 'info');
+          });
+        });
+
+        fdListContainer.querySelectorAll('.credit-interest-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = Number(this.getAttribute('data-id'));
+            const targetFd = fixedDeposits.find(f => f.id === id);
+            if (!targetFd) return;
+
+            const incomeItem = {
+              id: Date.now(),
+              title: `${targetFd.title} Interest Payout`,
+              amount: targetFd.expectedInterest,
+              type: 'income',
+              account: targetFd.currency === 'USD' ? 'credit_card' : 'bank',
+              currency: targetFd.currency,
+              category: 'investment',
+              date: todayStr
+            };
+            expenses.unshift(incomeItem);
+            saveState();
+            renderApp();
+            showNotification(`Logged ${formatCurrency(targetFd.expectedInterest, targetFd.currency)} as Investment Income in Cashflow!`, 'success');
+          });
+        });
+      }
+    }
+
+    // 17. RENDERING THE APP
+    function renderApp() {
+      const duplicateIds = detectDuplicateIds();
+
+      if (duplicateIds.size > 0) {
+        duplicateAlertBanner.classList.remove('hidden');
+        const numPairs = Math.floor(duplicateIds.size / 2) || 1;
+        duplicateCountText.textContent = `${duplicateIds.size} Duplicate Transactions Detected (${numPairs} duplicate pairs)`;
+      } else {
+        duplicateAlertBanner.classList.add('hidden');
+      }
+
+      let visibleItems = expenses;
+      if (currentFilter === 'bank') {
+        visibleItems = expenses.filter(i => i.account === 'bank');
+      } else if (currentFilter === 'credit_card') {
+        visibleItems = expenses.filter(i => i.account === 'credit_card');
+      } else if (currentFilter === 'income') {
+        visibleItems = expenses.filter(i => (i.type || 'expense') === 'income');
+      } else if (currentFilter === 'duplicates') {
+        visibleItems = expenses.filter(i => duplicateIds.has(i.id));
+      }
+
+      expenseList.innerHTML = '';
+
+      if (visibleItems.length === 0) {
+        emptyState.classList.remove('hidden');
+        expenseList.classList.add('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        expenseList.classList.remove('hidden');
+
+        visibleItems.forEach((item) => {
+          const li = document.createElement('li');
+          const isDup = duplicateIds.has(item.id);
+          const isIncome = (item.type || 'expense') === 'income';
+          
+          let borderStyle = 'border-slate-200/80 bg-slate-50';
+          if (isDup) {
+            borderStyle = 'border-amber-300 bg-amber-50/40';
+          } else if (isIncome) {
+            borderStyle = 'border-emerald-200/90 bg-emerald-50/30';
+          }
+
+          li.className = `flex items-center justify-between p-3 rounded-lg border ${borderStyle} hover:bg-slate-100/60 transition group`;
+          
+          const isBank = item.account === 'bank';
+          const badgeClass = isBank 
+            ? 'bg-blue-100 text-blue-800 border-blue-200' 
+            : 'bg-purple-100 text-purple-800 border-purple-200';
+          const badgeText = isBank ? 'Bank (AED)' : 'Credit Card (USD)';
+
+          const itemCurr = item.currency || (isBank ? 'AED' : 'USD');
+          const catKey = item.category || (isIncome ? 'salary' : 'shopping');
+          const catInfo = CATEGORIES[catKey] || CATEGORIES.shopping;
+
+          const dupBadgeHtml = isDup 
+            ? `<span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-0.5">⚠️ Duplicate</span>`
+            : '';
+
+          const typeTagHtml = isIncome
+            ? `<span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">Income</span>`
+            : '';
+
+          const amountPrefix = isIncome ? '+' : '-';
+          const amountColor = isIncome ? 'text-emerald-700 font-bold' : 'text-slate-900 font-semibold';
+
+          li.innerHTML = `
+            <div class="flex items-center gap-2.5">
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded border ${badgeClass}">
+                ${badgeText}
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium text-slate-800">${escapeHtml(item.title)}</p>
+                  ${typeTagHtml}
+                  ${dupBadgeHtml}
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] px-1.5 py-0.2 rounded border ${catInfo.color}">
+                    ${catInfo.name}
+                  </span>
+                  <span class="text-[11px] text-slate-400">${item.date || 'Today'}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <span class="text-sm ${amountColor}">${amountPrefix}${formatCurrency(item.amount, itemCurr)}</span>
+                ${itemCurr !== currencySymbol ? `<p class="text-[10px] text-slate-400">≈ ${formatBaseMoney(convertAmount(item.amount, itemCurr, currencySymbol))}</p>` : ''}
+              </div>
+              <button 
+                type="button" 
+                data-id="${item.id}" 
+                class="delete-btn text-slate-400 hover:text-rose-600 transition p-1 text-sm rounded"
+                title="Delete item"
+              >
+                &times;
+              </button>
+            </div>
+          `;
+          expenseList.appendChild(li);
+        });
+
+        expenseList.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const idToDelete = Number(this.getAttribute('data-id'));
+            deleteExpense(idToDelete);
+          });
+        });
+      }
+
+      // Calculations: Income, Expenses, and Net Cashflow
+      const incomeItems = expenses.filter(i => (i.type || 'expense') === 'income');
+      const expenseItems = expenses.filter(i => (i.type || 'expense') === 'expense');
+
+      const totalIncomeInBase = incomeItems.reduce((sum, item) => {
+        const itemCurr = item.currency || ACCOUNTS[item.account]?.currency || 'AED';
+        return sum + convertAmount(item.amount, itemCurr, currencySymbol);
+      }, 0);
+
+      const totalExpensesInBase = expenseItems.reduce((sum, item) => {
+        const itemCurr = item.currency || ACCOUNTS[item.account]?.currency || 'AED';
+        return sum + convertAmount(item.amount, itemCurr, currencySymbol);
+      }, 0);
+
+      const netCashflowInBase = totalIncomeInBase - totalExpensesInBase;
+
+      totalIncomeDisplay.textContent = formatBaseMoney(totalIncomeInBase);
+      incomeCountDisplay.textContent = `${incomeItems.length} deposits recorded`;
+
+      totalDisplay.textContent = formatBaseMoney(totalExpensesInBase);
+      countDisplay.textContent = `${expenseItems.length} expenses logged`;
+
+      netCashflowDisplay.textContent = (netCashflowInBase >= 0 ? '+' : '') + formatBaseMoney(netCashflowInBase);
+      if (netCashflowInBase >= 0) {
+        netCashflowDisplay.className = 'text-2xl font-bold text-emerald-800 mt-1';
+      } else {
+        netCashflowDisplay.className = 'text-2xl font-bold text-rose-700 mt-1';
+      }
+
+      if (totalIncomeInBase > 0) {
+        const rate = Math.max(0, Math.round((netCashflowInBase / totalIncomeInBase) * 100));
+        savingsRateBadge.textContent = `${rate}% saved`;
+        savingsRateBadge.className = 'text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded';
+      } else {
+        savingsRateBadge.textContent = '0% saved';
+        savingsRateBadge.className = 'text-[10px] font-bold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded';
+      }
+
+      const bankIncome = incomeItems.filter(i => i.account === 'bank').reduce((s, i) => s + i.amount, 0);
+      const bankExpense = expenseItems.filter(i => i.account === 'bank').reduce((s, i) => s + i.amount, 0);
+      const bankNet = bankIncome - bankExpense;
+
+      const cardExpense = expenseItems.filter(i => i.account === 'credit_card').reduce((s, i) => s + i.amount, 0);
+
+      bankTotalDisplay.textContent = formatCurrency(bankExpense, 'AED');
+      bankCountDisplay.textContent = `${expenses.filter(i => i.account === 'bank').length} transactions`;
+      bankNetIndicator.textContent = `Net Cash: ${(bankNet >= 0 ? '+' : '')}${formatCurrency(bankNet, 'AED')}`;
+
+      cardTotalDisplay.textContent = formatCurrency(cardExpense, 'USD');
+      cardCountDisplay.textContent = `${expenses.filter(i => i.account === 'credit_card').length} charges`;
+
+      const cardInAed = convertAmount(cardExpense, 'USD', 'AED');
+      cardConvertedNote.textContent = `≈ AED ${cardInAed.toFixed(2)}`;
+
+      // Fixed Deposits Summary Card Calculations
+      const fdTotalInBase = fixedDeposits.reduce((sum, fd) => {
+        return sum + convertAmount(fd.principal, fd.currency, currencySymbol);
+      }, 0);
+
+      const fdEstAnnualInterestInBase = fixedDeposits.reduce((sum, fd) => {
+        const annualInterestNative = fd.principal * (fd.interestRate / 100);
+        return sum + convertAmount(annualInterestNative, fd.currency, currencySymbol);
+      }, 0);
+
+      fdTotalDisplay.textContent = formatBaseMoney(fdTotalInBase);
+      fdCountDisplay.textContent = `${fixedDeposits.length} active FDs`;
+      fdEstInterestNote.textContent = `+${formatBaseMoney(fdEstAnnualInterestInBase)}/yr`;
+
+      renderCategories(totalExpensesInBase);
+      renderBudget(totalExpensesInBase);
+      updateChartVisuals();
+      renderFixedDeposits();
+    }
+
+    function renderCategories(grandExpenseTotalInBase) {
+      categoryBarsContainer.innerHTML = '';
+      if (expenses.length === 0 || grandExpenseTotalInBase === 0) {
+        categoryBarsContainer.innerHTML = '<p class="text-slate-400 text-xs italic">No expense category data yet.</p>';
+        return;
+      }
+
+      const catTotalsInBase = {};
+      Object.keys(CATEGORIES).filter(k => !CATEGORIES[k].isIncome).forEach(k => catTotalsInBase[k] = 0);
+
+      const expenseListOnly = expenses.filter(i => (i.type || 'expense') === 'expense');
+
+      expenseListOnly.forEach(item => {
+        const k = item.category || 'shopping';
+        const itemCurr = item.currency || ACCOUNTS[item.account]?.currency || 'AED';
+        const converted = convertAmount(item.amount, itemCurr, currencySymbol);
+
+        if (catTotalsInBase[k] !== undefined) {
+          catTotalsInBase[k] += converted;
+        } else {
+          catTotals['shopping'] = (catTotalsInBase['shopping'] || 0) + converted;
+        }
+      });
+
+      const sortedCats = Object.keys(catTotalsInBase)
+        .filter(k => catTotalsInBase[k] > 0)
+        .sort((a, b) => catTotalsInBase[b] - catTotalsInBase[a]);
+
+      if (sortedCats.length === 0) {
+        categoryBarsContainer.innerHTML = '<p class="text-slate-400 text-xs italic">No expense spend recorded.</p>';
+        return;
+      }
+
+      sortedCats.forEach(k => {
+        const catInfo = CATEGORIES[k] || CATEGORIES.shopping;
+        const amtInBase = catTotalsInBase[k];
+        const pct = ((amtInBase / grandExpenseTotalInBase) * 100).toFixed(1);
+
+        const row = document.createElement('div');
+        row.className = 'space-y-1';
+        row.innerHTML = `
+          <div class="flex items-center justify-between text-slate-700">
+            <span class="font-medium">${catInfo.name}</span>
+            <span class="font-semibold text-slate-900">${formatBaseMoney(amtInBase)} <span class="text-slate-400 font-normal">(${pct}%)</span></span>
+          </div>
+          <div class="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+            <div class="${catInfo.barColor} h-1.5 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+          </div>
+        `;
+        categoryBarsContainer.appendChild(row);
+      });
+    }
+
+    function deleteExpense(id) {
+      expenses = expenses.filter(item => item.id !== id);
+      saveState();
+      renderApp();
+      showNotification('Transaction removed', 'info');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showNotification(msg, type = 'success') {
+      statusMessage.textContent = msg;
+      if (type === 'success') {
+        statusMessage.className = 'text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center';
+      } else if (type === 'error') {
+        statusMessage.className = 'text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 text-center';
+      } else {
+        statusMessage.className = 'text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 rounded-lg p-3 text-center';
+      }
+      statusMessage.classList.remove('hidden');
+      setTimeout(() => {
+        statusMessage.classList.add('hidden');
+      }, 3500);
+    }
+
+    // 18. MANUAL ENTRY SUBMISSION WITH INCOME & DUPLICATE CHECK
+    expenseForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      const title = expenseTitleInput.value.trim();
+      const amount = parseFloat(expenseAmountInput.value);
+      const account = expenseAccountInput.value;
+      const accountCurrency = ACCOUNTS[account]?.currency || 'AED';
+      const category = expenseCategoryInput.value;
+      const date = expenseDateInput.value || todayStr;
+      const type = typeIncomeRadio.checked ? 'income' : 'expense';
+
+      if (!title || isNaN(amount) || amount <= 0) {
+        showNotification('Please enter a valid title and positive amount', 'error');
+        return;
+      }
+
+      const newExpense = {
+        id: Date.now(),
+        title: title,
+        amount: amount,
+        type: type,
+        account: account,
+        currency: accountCurrency,
+        category: category,
+        date: date
+      };
+
+      const duplicateDetected = isDuplicateItem(newExpense, expenses);
+
+      expenses.unshift(newExpense);
+      saveState();
+
+      expenseTitleInput.value = '';
+      expenseAmountInput.value = '';
+      expenseTitleInput.focus();
+
+      renderApp();
+
+      const typeLabel = type === 'income' ? 'Income' : 'Expense';
+      if (duplicateDetected) {
+        showNotification(`Added ${typeLabel} "${title}" (${formatCurrency(amount, accountCurrency)}), but a duplicate was detected!`, 'error');
+      } else {
+        showNotification(`Added ${typeLabel} "${title}" (${formatCurrency(amount, accountCurrency)}) to ${ACCOUNTS[account]?.name}!`);
+      }
+    });
+
+    // 19. CSV PARSING LOGIC: SIMULTANEOUS DUAL INCOME & EXPENSE DETECTION
+    function parseCSVText(csvContent, targetAccount) {
+      if (targetAccount === 'fixed_deposit') {
+        parseFdCSV(csvContent);
+        return;
+      }
+
+      const lines = csvContent.split(/\r?\n/).filter(line => line.trim() !== '');
+      if (lines.length < 2) {
+        showNotification('CSV statement appears empty or lacks data rows', 'error');
+        return;
+      }
+
+      const headerLine = lines[0].toLowerCase();
+      const headers = parseCSVLine(headerLine);
+
+      let dateIdx = headers.findIndex(h => h.includes('date') || h.includes('posted'));
+      let descIdx = headers.findIndex(h => h.includes('description') || h.includes('payee') || h.includes('name') || h.includes('merchant') || h.includes('memo') || h.includes('narration') || h.includes('particulars'));
+      let debitIdx = headers.findIndex(h => h.includes('debit') || h.includes('withdrawal') || h.includes('dr') || h.includes('paid out') || h.includes('outflow'));
+      let creditIdx = headers.findIndex(h => h.includes('credit') || h.includes('deposit') || h.includes('cr') || h.includes('paid in') || h.includes('inflow'));
+      let typeIdx = headers.findIndex(h => h === 'type' || h.includes('trans type') || h.includes('cr/dr') || h.includes('d/c'));
+      let amountIdx = headers.findIndex(h => h.includes('amount') || h.includes('total') || h.includes('value'));
+
+      if (dateIdx === -1) dateIdx = 0;
+      if (descIdx === -1) descIdx = 1;
+      if (amountIdx === -1 && debitIdx === -1 && creditIdx === -1) amountIdx = 2;
+
+      let incomeCount = 0;
+      let expenseCount = 0;
+      let skippedDuplicates = 0;
+      let nowBase = Date.now();
+      const shouldSkipDuplicates = skipDuplicatesCheckbox.checked;
+      const accountCurrency = ACCOUNTS[targetAccount]?.currency || 'AED';
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = parseCSVLine(lines[i]);
+        if (row.length <= Math.max(dateIdx, descIdx)) continue;
+
+        const dateVal = row[dateIdx] ? row[dateIdx].trim() : todayStr;
+        const descVal = row[descIdx] ? row[descIdx].trim() : 'Statement Entry';
+
+        let numAmt = 0;
+        let transType = 'expense';
+
+        const rawDebit = debitIdx !== -1 && row[debitIdx] ? row[debitIdx].replace(/[$,AEDaed\s()]/g, '').trim() : '';
+        const rawCredit = creditIdx !== -1 && row[creditIdx] ? row[creditIdx].replace(/[$,AEDaed\s()]/g, '').trim() : '';
+
+        const debitVal = parseFloat(rawDebit);
+        const creditVal = parseFloat(rawCredit);
+
+        if (!isNaN(creditVal) && creditVal > 0) {
+          numAmt = creditVal;
+          transType = 'income';
+        } else if (!isNaN(debitVal) && debitVal > 0) {
+          numAmt = debitVal;
+          transType = 'expense';
+        } else if (amountIdx !== -1 && row[amountIdx]) {
+          const rawAmt = row[amountIdx].replace(/[$,AEDaed\s]/g, '').trim();
+          const isNegative = rawAmt.startsWith('-') || (rawAmt.startsWith('(') && rawAmt.endsWith(')'));
+          const cleanAmt = rawAmt.replace(/[()-]/g, '');
+          const parsed = parseFloat(cleanAmt);
+
+          if (!isNaN(parsed) && parsed > 0) {
+            numAmt = parsed;
+
+            const typeVal = typeIdx !== -1 && row[typeIdx] ? row[typeIdx].trim().toUpperCase() : '';
+            if (typeVal.includes('CR') || typeVal.includes('CREDIT') || typeVal.includes('DEPOSIT')) {
+              transType = 'income';
+            } else if (typeVal.includes('DR') || typeVal.includes('DEBIT')) {
+              transType = 'expense';
+            } else if (isNegative) {
+              transType = 'expense';
+            } else {
+              const keywordCheck = detectCategoryAndType(descVal);
+              transType = keywordCheck.type;
+            }
+          }
+        }
+
+        if (numAmt > 0) {
+          const detected = detectCategoryAndType(descVal, '', transType);
+
+          const candidate = {
+            id: nowBase + i,
+            title: descVal,
+            amount: numAmt,
+            type: transType,
+            account: targetAccount,
+            currency: accountCurrency,
+            category: detected.category,
+            date: dateVal
+          };
+
+          if (shouldSkipDuplicates && isDuplicateItem(candidate, expenses)) {
+            skippedDuplicates++;
+          } else {
+            expenses.unshift(candidate);
+            if (transType === 'income') {
+              incomeCount++;
+            } else {
+              expenseCount++;
+            }
+          }
+        }
+      }
+
+      saveState();
+      renderApp();
+
+      const totalImported = incomeCount + expenseCount;
+      if (totalImported > 0) {
+        let msg = `Statement parsed: ${incomeCount} Income deposit(s) and ${expenseCount} Expense(s) imported into ${ACCOUNTS[targetAccount]?.name}!`;
+        if (skippedDuplicates > 0) {
+          msg += ` (${skippedDuplicates} duplicates auto-skipped)`;
+        }
+        showNotification(msg, 'success');
+      } else if (skippedDuplicates > 0) {
+        showNotification(`All ${skippedDuplicates} transactions in this statement were duplicates and skipped.`, 'info');
+      } else {
+        showNotification('Could not detect readable transactions from this CSV.', 'error');
+      }
+    }
+
+    function parseCSVLine(text) {
+      const result = [];
+      let cur = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(cur.trim());
+          cur = '';
+        } else {
+          cur += char;
+        }
+      }
+      result.push(cur.trim());
+      return result;
+    }
+
+    // 20. PDF STATEMENT & CERTIFICATE PARSING WITH ACTIVE CALLBACK HANDLING & BUFFER PRESERVATION
+    async function processPDFStatement(arrayBuffer, passwordAttempt, targetAccount) {
+      setProcessingState(true);
+      
+      // Always store cloned buffer so original is never neutered
+      activeMasterBuffer = arrayBuffer.slice(0);
+      activeTargetAccount = targetAccount;
+      activePdfSource = 'statement';
+
+      try {
+        if (typeof pdfjsLib === 'undefined') {
+          throw new Error('PDF reader engine is still loading. Please try again in a moment.');
+        }
+
+        const bufferForWorker = arrayBuffer.slice(0);
+        const loadingTask = pdfjsLib.getDocument({
+          data: bufferForWorker,
+          password: passwordAttempt || ''
+        });
+
+        loadingTask.onPassword = function(callback, reason) {
+          // Reason 1 = NEED_PASSWORD, Reason 2 = INCORRECT_PASSWORD
+          activePasswordCallback = callback;
+          setProcessingState(false);
+          openPasswordModal(arrayBuffer.slice(0), targetAccount, reason === 2, 'statement');
+        };
+
+        const pdf = await loadingTask.promise;
+        let extractedText = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageStrings = textContent.items.map(item => item.str).join(' ');
+          extractedText += pageStrings + '\n';
+        }
+
+        closePasswordModal();
+        if (passwordAttempt && modalSaveCheckbox.checked) {
+          savedStatementPassword = passwordAttempt;
+          saveState();
+          updatePasswordBadge();
+        }
+
+        if (targetAccount === 'fixed_deposit') {
+          parseFdCertificateText(extractedText);
+        } else {
+          parsePDFText(extractedText, targetAccount);
+        }
+      } catch (err) {
+        console.error('PDF Processing Error:', err);
+        setProcessingState(false);
+        if (err.name === 'PasswordException' || (err.message && err.message.toLowerCase().includes('password'))) {
+          openPasswordModal(arrayBuffer.slice(0), targetAccount, true, 'statement');
+        } else {
+          showNotification(err.message || 'Error parsing PDF document', 'error');
+        }
+      } finally {
+        setProcessingState(false);
+      }
+    }
+
+    function parsePDFText(text, targetAccount) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      let incomeCount = 0;
+      let expenseCount = 0;
+      let skippedDuplicates = 0;
+      let nowBase = Date.now();
+      const shouldSkipDuplicates = skipDuplicatesCheckbox.checked;
+      const accountCurrency = ACCOUNTS[targetAccount]?.currency || 'AED';
+
+      const dateRegex = /\b(\d{4}[-/]\d{2}[-/]\d{2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|[A-Za-z]{3}\s+\d{1,2})\b/;
+      const amountRegex = /[-$]?\s*(\d{1,3}(?:,\d{3})*\.\d{2})\s*(CR|DR|cr|dr)?\b/;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const dateMatch = line.match(dateRegex);
+        const amountMatch = line.match(amountRegex);
+
+        if (dateMatch && amountMatch) {
+          const rawAmt = amountMatch[1].replace(/,/g, '');
+          const crDrTag = amountMatch[2] ? amountMatch[2].toUpperCase() : '';
+          const numAmt = parseFloat(rawAmt);
+
+          if (!isNaN(numAmt) && numAmt > 0) {
+            let desc = line
+              .replace(dateMatch[0], '')
+              .replace(amountMatch[0], '')
+              .replace(/[$]|AED/gi, '')
+              .trim();
+
+            if (!desc || desc.length < 2) {
+              desc = 'Statement Transaction';
+            }
+
+            let transType = 'expense';
+            if (crDrTag === 'CR' || line.toUpperCase().includes(' CR ') || line.toUpperCase().endsWith(' CR')) {
+              transType = 'income';
+            } else if (crDrTag === 'DR' || line.toUpperCase().includes(' DR ') || line.toUpperCase().endsWith(' DR')) {
+              transType = 'expense';
+            } else {
+              const detected = detectCategoryAndType(desc);
+              transType = detected.type;
+            }
+
+            const detectedCat = detectCategoryAndType(desc, '', transType);
+
+            const candidate = {
+              id: nowBase + i,
+              title: desc,
+              amount: numAmt,
+              type: transType,
+              account: targetAccount,
+              currency: accountCurrency,
+              category: detectedCat.category,
+              date: dateMatch[0]
+            };
+
+            if (shouldSkipDuplicates && isDuplicateItem(candidate, expenses)) {
+              skippedDuplicates++;
+            } else {
+              expenses.unshift(candidate);
+              if (transType === 'income') {
+                incomeCount++;
+              } else {
+                expenseCount++;
+              }
+            }
+          }
+        }
+      }
+
+      saveState();
+      renderApp();
+
+      const totalImported = incomeCount + expenseCount;
+      if (totalImported > 0) {
+        let msg = `Decrypted PDF: imported ${incomeCount} Income deposit(s) and ${expenseCount} Expense(s) into ${ACCOUNTS[targetAccount]?.name}!`;
+        if (skippedDuplicates > 0) msg += ` (${skippedDuplicates} duplicates auto-skipped)`;
+        showNotification(msg, 'success');
+      } else if (skippedDuplicates > 0) {
+        showNotification(`Decrypted PDF successfully: all ${skippedDuplicates} transactions were duplicates and skipped.`, 'info');
+      } else {
+        showNotification('Decrypted PDF, but could not detect readable transactions. Try a CSV statement.', 'error');
+      }
+    }
+
+    // Modal Controls for Password Entry
+    function openPasswordModal(arrayBuffer, targetAccount, isRetry = false, source = 'statement') {
+      activeMasterBuffer = arrayBuffer ? arrayBuffer.slice(0) : null;
+      activeTargetAccount = targetAccount;
+      activePdfSource = source;
+
+      modalPasswordInput.value = savedStatementPassword || '';
+      if (isRetry) {
+        modalErrorMsg.textContent = 'Incorrect password. Please verify your bank\'s password format (check DOB, uppercase/lowercase) and try again.';
+        modalErrorMsg.classList.remove('hidden');
+      } else {
+        modalErrorMsg.classList.add('hidden');
+      }
+      pdfPasswordModal.classList.remove('hidden');
+      modalPasswordInput.focus();
+    }
+
+    function closePasswordModal() {
+      pdfPasswordModal.classList.add('hidden');
+      modalErrorMsg.classList.add('hidden');
+      activePasswordCallback = null;
+    }
+
+    modalCancelBtn.addEventListener('click', closePasswordModal);
+
+    modalUnlockBtn.addEventListener('click', () => {
+      const enteredPwd = modalPasswordInput.value.trim();
+      if (!enteredPwd) {
+        modalErrorMsg.textContent = 'Please enter your document password to unlock.';
+        modalErrorMsg.classList.remove('hidden');
+        return;
+      }
+
+      modalErrorMsg.classList.add('hidden');
+
+      // If PDF.js worker is waiting on active onPassword callback
+      if (activePasswordCallback) {
+        setProcessingState(true);
+        const cb = activePasswordCallback;
+        activePasswordCallback = null;
+        cb(enteredPwd);
+      } else if (activeMasterBuffer) {
+        // Re-run with fresh cloned buffer
+        const freshBuffer = activeMasterBuffer.slice(0);
+        if (activePdfSource === 'fixed_deposit') {
+          processFdPDF(freshBuffer, enteredPwd);
+        } else {
+          processPDFStatement(freshBuffer, enteredPwd, activeTargetAccount);
+        }
+      }
+    });
+
+    function setProcessingState(isProcessing) {
+      if (isProcessing) {
+        processBtnSpinner.classList.remove('hidden');
+        processBtnText.textContent = 'Decrypting & Parsing...';
+        processCsvBtn.disabled = true;
+      } else {
+        processBtnSpinner.classList.add('hidden');
+        processBtnText.textContent = 'Parse & Import Statement';
+        processCsvBtn.disabled = false;
+      }
+    }
+
+    // 21. FILE UPLOAD EVENT HANDLER
+    processCsvBtn.addEventListener('click', function() {
+      const file = csvFileInput.files[0];
+      if (!file) {
+        showNotification('Please select a PDF or CSV statement file first, or click a sample test button below.', 'error');
+        return;
+      }
+
+      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+      const targetAccount = uploadTargetAccount.value;
+
+      if (isPdf) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const buffer = e.target.result;
+          processPDFStatement(buffer, savedStatementPassword, targetAccount);
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const text = e.target.result;
+          parseCSVText(text, targetAccount);
+          csvFileInput.value = '';
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // 22. QUICK DEMO TESTS
+    sampleBankBtn.addEventListener('click', function() {
+      const sampleBankCSV = `Date,Description,Debit,Credit
+2026-10-01,Company Monthly Salary Payroll Transfer,,18500.00
+2026-10-04,Carrefour Supermarket Dubai,164.20,
+2026-10-08,Freelance Consulting Invoice Deposit,,3200.00
+2026-10-12,DEWA Utility Electricity and Water Bill,280.50,
+2026-10-18,ENOC Petrol Station Fuel,75.00,
+2026-10-24,Amazon UAE Retail Order,189.00,`;
+
+      parseCSVText(sampleBankCSV, 'bank');
+      uploadTargetAccount.value = 'bank';
+    });
+
+    sampleCardBtn.addEventListener('click', function() {
+      const sampleCardCSV = `Date,Merchant,Debit,Credit
+2026-10-22,Netflix Subscription,19.99,
+2026-10-24,Specialty Coffee Roasters,9.50,
+2026-10-26,Dinner Restaurant,84.50,
+2026-10-27,Merchant Cashback Credit Refund,,15.00
+2026-10-28,Noon Online Shopping,149.00,`;
+
+      parseCSVText(sampleCardCSV, 'credit_card');
+      uploadTargetAccount.value = 'credit_card';
+    });
+
+    samplePdfBtn.addEventListener('click', function() {
+      openPasswordModal(new ArrayBuffer(8), 'bank', false);
+      showNotification('Encrypted PDF prompt loaded! Try testing with a sample password (e.g. 1234).', 'info');
+    });
+
+    sampleDuplicateTestBtn.addEventListener('click', function() {
+      const dup = {
+        id: Date.now() + 999,
+        title: 'Carrefour Supermarket Dubai',
+        amount: 164.20,
+        type: 'expense',
+        account: 'bank',
+        currency: 'AED',
+        category: 'groceries',
+        date: '2026-10-04'
+      };
+      expenses.unshift(dup);
+      saveState();
+      renderApp();
+      showNotification('Injected duplicate entry! Notice the warning alert and yellow badge.', 'info');
+    });
+
+    sampleSalaryDepositBtn.addEventListener('click', function() {
+      const salaryDeposit = {
+        id: Date.now() + 888,
+        title: 'Monthly Salary Transfer (Dubai Payroll)',
+        amount: 18500.00,
+        type: 'income',
+        account: 'bank',
+        currency: 'AED',
+        category: 'salary',
+        date: todayStr
+      };
+      expenses.unshift(salaryDeposit);
+      saveState();
+      renderApp();
+      showNotification('Added monthly salary of AED 18,500! Check your Net Cash Flow.', 'success');
+    });
+
+    // 23. RESET MODAL CONTROLS
+    openResetModalBtn.addEventListener('click', () => {
+      resetConfirmModal.classList.remove('hidden');
+    });
+
+    cancelResetBtn.addEventListener('click', () => {
+      resetConfirmModal.classList.add('hidden');
+    });
+
+    confirmResetBtn.addEventListener('click', () => {
+      expenses = [];
+      fixedDeposits = [];
+      try {
+        localStorage.removeItem('daily_expense_tracker_items');
+        localStorage.removeItem('daily_expense_tracker_fds');
+      } catch (e) {}
+      resetConfirmModal.classList.add('hidden');
+      renderApp();
+      showNotification('All tracker and fixed deposit data has been reset.', 'info');
+    });
+
+    // Initial render & state check
+    updateFormForTransactionType();
+    updateCurrencyButtons();
+    updatePasswordBadge();
+    updateFdPreview();
+    renderApp();
+  </script>
+</body>
+</html>
